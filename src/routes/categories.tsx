@@ -3,9 +3,11 @@ import { ArrowRight } from "lucide-react";
 
 import { PublicLayout } from "@/components/public-layout";
 import { fetchCategoriesWithCounts } from "@/lib/events";
+import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
+    links: [{ rel: "canonical", href: `${SITE.url}/categories` }],
     meta: [
       { title: "Catégories d'événements — HEMLÉ Events" },
       {
@@ -49,7 +51,9 @@ function Categories() {
             search={{ categorie: cat.slug }}
             className="card-lift group rounded-2xl border border-border bg-card p-6 shadow-card hover:-translate-y-1 hover:border-primary hover:shadow-lift"
           >
-            <h2 className="font-display text-xl font-semibold group-hover:text-primary">{cat.nom}</h2>
+            <h2 className="font-display text-xl font-semibold group-hover:text-primary">
+              {cat.nom}
+            </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               {cat.count} événement{cat.count > 1 ? "s" : ""} à venir
             </p>

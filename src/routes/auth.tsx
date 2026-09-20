@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import logo from "@/assets/hemle-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { signInWithIdentifier } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -25,8 +26,9 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -40,19 +42,25 @@ function AuthPage() {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (signInError) {
-      setError("Identifiants incorrects ou compte inactif.");
-      return;
+    try {
+      const session = await signInWithIdentifier({ data: { identifier, password } });
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: session.accessToken,
+        refresh_token: session.refreshToken,
+      });
+      if (sessionError) throw sessionError;
+      navigate({ to: "/admin", replace: true });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Connexion impossible.");
+    } finally {
+      setLoading(false);
     }
-    navigate({ to: "/admin", replace: true });
   }
 
   return (
     <div className="hero-gradient flex min-h-screen items-center justify-center px-4 py-16">
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-card">
-        <img src={logo.url} alt="HEMLÉ" className="mx-auto h-12 w-auto" />
+        <img src="/hemle-logo.png" alt="HEMLÉ" className="mx-auto h-12 w-auto" />
         <h1 className="mt-6 text-center font-display text-2xl font-bold">Espace équipe</h1>
         <p className="mt-2 text-center text-sm text-muted-foreground">
           Accès réservé à l'équipe éditoriale HEMLÉ.
@@ -60,26 +68,37 @@ function AuthPage() {
 
         <form className="mt-8 space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="email">Adresse e-mail</Label>
+            <Label htmlFor="identifier">Identifiant</Label>
             <Input
-              id="email"
-              type="email"
-              autoComplete="email"
+              id="identifier"
+              autoComplete="username"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              minLength={3}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value.toLowerCase())}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Mot de passe</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-11"
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+              </button>
+            </div>
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button type="submit" className="w-full" disabled={loading}>

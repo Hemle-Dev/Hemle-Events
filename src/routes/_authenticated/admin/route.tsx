@@ -2,7 +2,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import logo from "@/assets/hemle-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,13 +9,29 @@ import { fetchMyAccess } from "@/lib/admin";
 import { ROLE_LABELS, type AppRole } from "@/lib/events";
 
 const ADMIN_LINKS = [
-  { to: "/admin", label: "Tableau de bord", exact: true },
-  { to: "/admin/evenements", label: "Événements", exact: false },
-  { to: "/admin/categories", label: "Catégories", exact: false },
-  { to: "/admin/equipe", label: "Équipe", exact: false },
+  {
+    to: "/admin",
+    label: "Tableau de bord",
+    exact: true,
+    roles: ["administrateur", "editeur", "moderateur"],
+  },
+  {
+    to: "/admin/evenements",
+    label: "Événements",
+    exact: false,
+    roles: ["administrateur", "editeur", "moderateur"],
+  },
+  {
+    to: "/admin/categories",
+    label: "Catégories",
+    exact: false,
+    roles: ["administrateur", "editeur"],
+  },
+  { to: "/admin/equipe", label: "Équipe", exact: false, roles: ["administrateur"] },
 ] as const;
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  head: () => ({ meta: [{ name: "robots", content: "noindex, nofollow" }] }),
   component: AdminLayout,
 });
 
@@ -24,18 +39,18 @@ function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [access, setAccess] = useState<{
-    email: string | null;
+    identifier: string | null;
     roles: AppRole[];
     actif: boolean;
     ready: boolean;
-  }>({ email: null, roles: [], actif: true, ready: false });
+  }>({ identifier: null, roles: [], actif: false, ready: false });
 
   useEffect(() => {
     fetchMyAccess().then(({ user, profile, roles }) => {
       setAccess({
-        email: profile?.email ?? user?.email ?? null,
+        identifier: profile?.identifiant ?? null,
         roles,
-        actif: profile?.actif ?? true,
+        actif: profile?.actif ?? false,
         ready: true,
       });
     });
@@ -52,14 +67,22 @@ function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <a
+        href="#admin-content"
+        className="sr-only z-[100] rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Aller au contenu
+      </a>
       <header className="border-b border-border bg-card">
         <div className="container-page flex flex-wrap items-center gap-4 py-4">
           <Link to="/admin" className="flex items-center gap-3">
-            <img src={logo.url} alt="HEMLÉ" className="h-9 w-auto" />
+            <img src="/hemle-logo.png" alt="HEMLÉ" className="h-9 w-auto" />
             <span className="font-display text-lg font-bold">Espace équipe</span>
           </Link>
           <nav className="flex flex-wrap gap-1 text-sm">
-            {ADMIN_LINKS.map((link) => (
+            {ADMIN_LINKS.filter((link) =>
+              link.roles.some((role) => access.roles.includes(role)),
+            ).map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
@@ -73,8 +96,10 @@ function AdminLayout() {
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
             <span className="hidden sm:inline">
-              {access.email}
-              {access.roles.length ? ` · ${access.roles.map((r) => ROLE_LABELS[r]).join(", ")}` : ""}
+              {access.identifier}
+              {access.roles.length
+                ? ` · ${access.roles.map((r) => ROLE_LABELS[r]).join(", ")}`
+                : ""}
             </span>
             <Button variant="outline" size="sm" onClick={signOut}>
               Se déconnecter
@@ -83,7 +108,7 @@ function AdminLayout() {
         </div>
       </header>
 
-      <main className="container-page py-8">
+      <main id="admin-content" tabIndex={-1} className="container-page py-8">
         {!access.ready ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : isStaff ? (

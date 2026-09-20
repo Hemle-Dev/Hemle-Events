@@ -15,6 +15,20 @@
       "when": 1789842471858,
       "tag": "0001_add_date_fin_effective",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789911569525,
+      "tag": "0002_secure_identifier_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789911569526,
+      "tag": "0003_event_image_storage",
+      "breakpoints": true
     }
   ]
 }

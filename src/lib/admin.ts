@@ -33,7 +33,9 @@ export async function fetchMyAccess() {
   };
 }
 
-export async function fetchAdminEvents(filters: { q?: string; statut?: EventStatus | "tous" } = {}) {
+export async function fetchAdminEvents(
+  filters: { q?: string; statut?: EventStatus | "tous" } = {},
+) {
   let query = supabase
     .from("events")
     .select("*, categories(*)")
@@ -87,7 +89,10 @@ export async function fetchAdminStats() {
 
 export async function saveEvent(id: string | null, values: EventInsert) {
   if (id) {
-    const { error } = await supabase.from("events").update(values as EventUpdate).eq("id", id);
+    const { error } = await supabase
+      .from("events")
+      .update(values as EventUpdate)
+      .eq("id", id);
     if (error) throw error;
     return id;
   }
@@ -124,7 +129,10 @@ export async function fetchTeam() {
   return (profiles ?? []).map((p) => ({ ...(p as ProfileRow), roles: byUser.get(p.id) ?? [] }));
 }
 
-export async function saveCategory(id: string | null, values: { nom: string; slug: string; description: string | null; ordre: number }) {
+export async function saveCategory(
+  id: string | null,
+  values: { nom: string; slug: string; description: string | null; ordre: number },
+) {
   if (id) {
     const { error } = await supabase.from("categories").update(values).eq("id", id);
     if (error) throw error;
@@ -137,4 +145,24 @@ export async function saveCategory(id: string | null, values: { nom: string; slu
 export async function deleteCategory(id: string) {
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function uploadEventImage(file: File) {
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  if (!allowed.includes(file.type)) throw new Error("Format accepté : JPEG, PNG, WebP ou AVIF.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("L’image ne doit pas dépasser 8 Mo.");
+  const extension =
+    file.name
+      .split(".")
+      .pop()
+      ?.toLowerCase()
+      .replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `${new Date().getFullYear()}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from("event-images").upload(path, file, {
+    cacheControl: "31536000",
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) throw error;
+  return supabase.storage.from("event-images").getPublicUrl(path).data.publicUrl;
 }

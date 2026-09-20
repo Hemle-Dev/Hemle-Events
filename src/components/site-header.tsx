@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 
-import logo from "@/assets/hemle-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { GOOGLE_FORM_URL, NAV_LINKS } from "@/lib/site";
@@ -51,7 +50,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-md">
       <div className="container-page flex h-16 items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2" aria-label="HEMLÉ Events, accueil">
-          <img src={logo.url} alt="Logo HEMLÉ Mag" className="h-9 w-auto" />
+          <img src="/hemle-logo.png" alt="Logo HEMLÉ Mag" className="h-9 w-auto" />
           <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
             Events
           </span>
@@ -65,7 +64,12 @@ export function SiteHeader() {
           <AddEventButton size="sm" className="hidden sm:inline-flex" />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden" aria-label="Ouvrir le menu">
+              <Button
+                variant="outline"
+                size="icon"
+                className="md:hidden"
+                aria-label="Ouvrir le menu"
+              >
                 <Menu aria-hidden="true" />
               </Button>
             </SheetTrigger>

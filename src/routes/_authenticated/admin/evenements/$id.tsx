@@ -15,13 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchAdminEvent, saveEvent, type EventInsert } from "@/lib/admin";
 import {
-  EVENT_STATUS_LABELS,
-  fetchCategories,
-  slugify,
-  type EventStatus,
-} from "@/lib/events";
+  fetchAdminEvent,
+  fetchMyAccess,
+  saveEvent,
+  uploadEventImage,
+  type EventInsert,
+} from "@/lib/admin";
+import { EVENT_STATUS_LABELS, fetchCategories, slugify, type EventStatus } from "@/lib/events";
 
 export const Route = createFileRoute("/_authenticated/admin/evenements/$id")({
   component: EventEditor,
@@ -84,8 +85,10 @@ function EventEditor() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const categories = useQuery({ queryKey: ["admin", "categories"], queryFn: fetchCategories });
+  const access = useQuery({ queryKey: ["admin", "my-access"], queryFn: fetchMyAccess });
   const existing = useQuery({
     queryKey: ["admin", "event", id],
     queryFn: () => fetchAdminEvent(id),
@@ -155,7 +158,7 @@ function EventEditor() {
         mise_en_avant: form.mise_en_avant,
         published_at:
           form.statut === "publie"
-            ? new Date().toISOString()
+            ? (existing.data?.published_at ?? new Date().toISOString())
             : form.statut === "programme" && form.published_at
               ? new Date(form.published_at).toISOString()
               : null,
@@ -169,6 +172,23 @@ function EventEditor() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const canCreate = access.data?.roles.some(
+    (role) => role === "administrateur" || role === "editeur",
+  );
+  if (isNew && access.data && !canCreate) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-8">
+        <h1 className="font-display text-2xl font-bold">Création non autorisée</h1>
+        <p className="mt-2 text-muted-foreground">
+          Votre rôle permet de relire et valider les événements existants, mais pas d’en créer.
+        </p>
+        <Button asChild variant="outline" className="mt-6">
+          <Link to="/admin/evenements">Retour aux événements</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -242,6 +262,29 @@ function EventEditor() {
               <Input value={form.image_alt} onChange={(e) => update("image_alt", e.target.value)} />
             </Field>
           </div>
+          <Field label="Téléverser une image">
+            <Input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              disabled={imageUploading}
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                setImageUploading(true);
+                try {
+                  const url = await uploadEventImage(file);
+                  update("image_url", url);
+                  toast.success("Image téléversée");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Téléversement impossible");
+                } finally {
+                  setImageUploading(false);
+                  event.target.value = "";
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">JPEG, PNG, WebP ou AVIF · 8 Mo maximum.</p>
+          </Field>
           {form.image_url ? (
             <img
               src={form.image_url}
@@ -274,6 +317,7 @@ function EventEditor() {
             <Field label="Date et heure de mise en ligne">
               <Input
                 type="datetime-local"
+                required
                 value={form.published_at}
                 onChange={(e) => update("published_at", e.target.value)}
               />
@@ -337,6 +381,7 @@ function EventEditor() {
             <Field label="Date de fin">
               <Input
                 type="date"
+                min={form.date_debut || undefined}
                 value={form.date_fin}
                 onChange={(e) => update("date_fin", e.target.value)}
               />
@@ -354,7 +399,11 @@ function EventEditor() {
               <Input required value={form.pays} onChange={(e) => update("pays", e.target.value)} />
             </Field>
             <Field label="Ville" required>
-              <Input required value={form.ville} onChange={(e) => update("ville", e.target.value)} />
+              <Input
+                required
+                value={form.ville}
+                onChange={(e) => update("ville", e.target.value)}
+              />
             </Field>
             <Field label="Lieu">
               <Input value={form.lieu} onChange={(e) => update("lieu", e.target.value)} />
@@ -379,12 +428,17 @@ function EventEditor() {
           </Field>
           <Field label="Lien d'inscription">
             <Input
+              type="url"
               value={form.lien_inscription}
               onChange={(e) => update("lien_inscription", e.target.value)}
             />
           </Field>
           <Field label="Site web">
-            <Input value={form.site_web} onChange={(e) => update("site_web", e.target.value)} />
+            <Input
+              type="url"
+              value={form.site_web}
+              onChange={(e) => update("site_web", e.target.value)}
+            />
           </Field>
         </section>
       </div>

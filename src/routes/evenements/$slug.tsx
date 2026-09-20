@@ -25,6 +25,7 @@ import {
   formatEventDates,
   type EventWithCategory,
 } from "@/lib/events";
+import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/evenements/$slug")({
   loader: async ({ params }) => {
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/evenements/$slug")({
     if (!event) return {};
     const title = `${event.titre} — HEMLÉ Events`;
     const description = event.description.slice(0, 155);
-    const url = `https://hemle-events.lovable.app/evenements/${event.slug}`;
+    const url = `${SITE.url}/evenements/${event.slug}`;
     const image = event.image_url ?? undefined;
     return {
       meta: [
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/evenements/$slug")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "article" },
+        { property: "og:url", content: url },
         { name: "twitter:card", content: "summary_large_image" },
         ...(image
           ? [
@@ -80,10 +82,14 @@ export const Route = createFileRoute("/evenements/$slug")({
               },
             },
             organizer: event.organisateur
-              ? { "@type": "Organization", name: event.organisateur, url: event.site_web ?? undefined }
+              ? {
+                  "@type": "Organization",
+                  name: event.organisateur,
+                  url: event.site_web ?? undefined,
+                }
               : undefined,
             url,
-          }),
+          }).replace(/</g, "\\u003c"),
         },
       ],
     };
@@ -105,7 +111,7 @@ export const Route = createFileRoute("/evenements/$slug")({
 });
 
 function ShareBar({ event }: { event: EventWithCategory }) {
-  const [url, setUrl] = useState(`https://hemle-events.lovable.app/evenements/${event.slug}`);
+  const [url, setUrl] = useState(`${SITE.url}/evenements/${event.slug}`);
   useEffect(() => setUrl(window.location.href), []);
   const text = encodeURIComponent(`${event.titre} — HEMLÉ Events`);
 
@@ -205,7 +211,9 @@ function EventDetail() {
                 </h2>
                 <p className="mt-2 font-medium">{event.organisateur}</p>
                 {event.organisateur_description ? (
-                  <p className="mt-1 text-sm text-muted-foreground">{event.organisateur_description}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {event.organisateur_description}
+                  </p>
                 ) : null}
                 {event.site_web ? (
                   <a
@@ -235,7 +243,10 @@ function EventDetail() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
               <dl className="space-y-4 text-sm">
                 <div className="flex gap-3">
-                  <CalendarDays className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <CalendarDays
+                    className="mt-0.5 size-4 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
                   <div>
                     <dt className="font-semibold">Dates</dt>
                     <dd className="text-muted-foreground">{formatEventDates(event)}</dd>

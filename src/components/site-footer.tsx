@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 
-import logo from "@/assets/hemle-logo.png.asset.json";
 import { SocialLinks } from "@/components/social-links";
 import { NAV_LINKS, SITE } from "@/lib/site";
 
@@ -9,7 +8,11 @@ export function SiteFooter() {
     <footer className="surface-ink mt-24">
       <div className="container-page grid gap-10 py-14 md:grid-cols-3">
         <div>
-          <img src={logo.url} alt="Logo HEMLÉ Mag" className="h-10 w-auto brightness-0 invert" />
+          <img
+            src="/hemle-logo.png"
+            alt="Logo HEMLÉ Mag"
+            className="h-10 w-auto brightness-0 invert"
+          />
           <p className="mt-4 max-w-sm text-sm text-ink-foreground/75">{SITE.tagline}</p>
           <p className="mt-4 text-sm text-ink-foreground/75">
             <a className="underline-offset-4 hover:underline" href={`mailto:${SITE.email}`}>

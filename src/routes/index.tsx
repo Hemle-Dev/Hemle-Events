@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Search } from "lucide-react";
 import { useState } from "react";
 
-import heroImage from "@/assets/hero.jpg.asset.json";
 import { EmptyState, EventGrid } from "@/components/event-card";
 import { PublicLayout, SectionHeading } from "@/components/public-layout";
 import { AddEventButton } from "@/components/site-header";
@@ -14,6 +13,7 @@ import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/")({
   head: () => ({
+    links: [{ rel: "canonical", href: `${SITE.url}/` }],
     meta: [
       { title: "HEMLÉ Events — l'agenda de l'Afrique et de sa diaspora" },
       {
@@ -31,7 +31,10 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: async () => {
-    const [highlights, categories] = await Promise.all([fetchHighlights(), fetchCategoriesWithCounts()]);
+    const [highlights, categories] = await Promise.all([
+      fetchHighlights(),
+      fetchCategoriesWithCounts(),
+    ]);
     return { ...highlights, categories };
   },
   component: Home,
@@ -80,7 +83,7 @@ function Home() {
     <PublicLayout>
       <section className="hero-gradient relative overflow-hidden">
         <img
-          src={heroImage.url}
+          src="/hero.jpg"
           alt=""
           aria-hidden="true"
           className="absolute inset-0 size-full object-cover opacity-35"
@@ -102,7 +105,11 @@ function Home() {
                 <ArrowRight aria-hidden="true" />
               </Link>
             </Button>
-            <AddEventButton size="lg" variant="outline" className="border-white/40 bg-white/10 text-white hover:bg-white/20" />
+            <AddEventButton
+              size="lg"
+              variant="outline"
+              className="border-white/40 bg-white/10 text-white hover:bg-white/20"
+            />
           </div>
         </div>
       </section>
@@ -115,7 +122,14 @@ function Home() {
             description="Une sélection éditoriale de la rédaction HEMLÉ."
           />
           <div id="a-la-une" />
-          {aLaUne.length ? <EventGrid events={aLaUne} /> : <EmptyState title="Aucune mise en avant pour le moment." description="Revenez bientôt." />}
+          {aLaUne.length ? (
+            <EventGrid events={aLaUne} />
+          ) : (
+            <EmptyState
+              title="Aucune mise en avant pour le moment."
+              description="Revenez bientôt."
+            />
+          )}
         </section>
 
         {ceWeekEnd.length ? (

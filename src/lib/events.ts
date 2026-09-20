@@ -89,7 +89,14 @@ export type EventFilters = {
 };
 
 function publicEventsQuery() {
-  return supabase.from("events").select(SELECT_WITH_CATEGORY, { count: "exact" }).eq("statut", "publie");
+  return supabase
+    .from("events")
+    .select(SELECT_WITH_CATEGORY, { count: "exact" })
+    .or(publicStatusFilter());
+}
+
+function publicStatusFilter() {
+  return `statut.eq.publie,and(statut.eq.programme,published_at.lte.${new Date().toISOString()})`;
 }
 
 export async function fetchPublicEvents(filters: EventFilters = {}) {
@@ -140,14 +147,18 @@ export async function fetchHighlights() {
     supabase
       .from("events")
       .select(SELECT_WITH_CATEGORY)
-      .eq("statut", "publie")
+      .or(publicStatusFilter())
       .gte("date_fin_effective", today);
 
   const weekend = dateRangeFor("week-end");
 
   const [aLaUne, ceWeekEnd, prochains] = await Promise.all([
     base().eq("mise_en_avant", true).order("date_debut").limit(3),
-    base().gte("date_fin_effective", weekend.start).lte("date_debut", weekend.end!).order("date_debut").limit(3),
+    base()
+      .gte("date_fin_effective", weekend.start)
+      .lte("date_debut", weekend.end!)
+      .order("date_debut")
+      .limit(3),
     base().order("date_debut").limit(6),
   ]);
 
@@ -168,7 +179,11 @@ export async function fetchCategoriesWithCounts() {
   const today = iso(new Date());
   const [cats, events] = await Promise.all([
     fetchCategories(),
-    supabase.from("events").select("category_id").eq("statut", "publie").gte("date_fin_effective", today),
+    supabase
+      .from("events")
+      .select("category_id")
+      .or(publicStatusFilter())
+      .gte("date_fin_effective", today),
   ]);
   const counts = new Map<string, number>();
   for (const row of events.data ?? []) {
@@ -192,7 +207,7 @@ export async function fetchSimilarEvents(event: EventWithCategory) {
   let query = supabase
     .from("events")
     .select(SELECT_WITH_CATEGORY)
-    .eq("statut", "publie")
+    .or(publicStatusFilter())
     .neq("id", event.id)
     .gte("date_fin_effective", today)
     .order("date_debut")
@@ -207,11 +222,13 @@ export async function fetchFilterOptions() {
   const { data } = await supabase
     .from("events")
     .select("pays, ville, type_evenement")
-    .eq("statut", "publie")
+    .or(publicStatusFilter())
     .gte("date_fin_effective", today);
   const pays = [...new Set((data ?? []).map((d) => d.pays).filter(Boolean))].sort();
   const villes = [...new Set((data ?? []).map((d) => d.ville).filter(Boolean))].sort();
-  const types = [...new Set((data ?? []).map((d) => d.type_evenement).filter(Boolean))].sort() as string[];
+  const types = [
+    ...new Set((data ?? []).map((d) => d.type_evenement).filter(Boolean)),
+  ].sort() as string[];
   return { pays, villes, types };
 }
 
@@ -247,7 +264,9 @@ export function formatShortDay(value: string) {
   return { day: String(d.getDate()).padStart(2, "0"), month: MONTHS[d.getMonth()]!.slice(0, 4) };
 }
 
-export function formatEventDates(event: Pick<EventRow, "date_debut" | "date_fin" | "heure_debut" | "heure_fin">) {
+export function formatEventDates(
+  event: Pick<EventRow, "date_debut" | "date_fin" | "heure_debut" | "heure_fin">,
+) {
   const start = formatDay(event.date_debut);
   const heure = event.heure_debut ? ` · ${event.heure_debut.slice(0, 5)}` : "";
   if (event.date_fin && event.date_fin !== event.date_debut) {

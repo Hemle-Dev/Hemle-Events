@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import logo from "@/assets/hemle-logo.png.asset.json";
-import heroImage from "@/assets/hero.jpg.asset.json";
 import { PublicLayout } from "@/components/public-layout";
 import { AddEventButton } from "@/components/site-header";
 import { SocialLinks } from "@/components/social-links";
@@ -9,6 +7,7 @@ import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/a-propos")({
   head: () => ({
+    links: [{ rel: "canonical", href: `${SITE.url}/a-propos` }],
     meta: [
       { title: "À propos de HEMLÉ — HEMLÉ Events" },
       {
@@ -33,14 +32,18 @@ function APropos() {
     <PublicLayout>
       <div className="hero-gradient relative overflow-hidden">
         <img
-          src={heroImage.url}
+          src="/hero.jpg"
           alt=""
           aria-hidden="true"
           className="absolute inset-0 size-full object-cover opacity-35"
         />
         <div className="hero-overlay absolute inset-0" />
         <div className="container-page relative py-20 text-center">
-          <img src={logo.url} alt="Logo HEMLÉ Mag" className="mx-auto h-16 w-auto brightness-0 invert" />
+          <img
+            src="/hemle-logo.png"
+            alt="Logo HEMLÉ Mag"
+            className="mx-auto h-16 w-auto brightness-0 invert"
+          />
           <h1 className="mt-6 font-display text-4xl font-bold text-white">À propos de HEMLÉ</h1>
           <p className="mx-auto mt-4 max-w-2xl text-white/85">{SITE.tagline}</p>
         </div>
@@ -50,8 +53,9 @@ function APropos() {
         <section>
           <h2 className="font-display text-2xl font-bold">HEMLÉ Magazine</h2>
           <p className="mt-4 text-muted-foreground">
-            HEMLÉ Mag est un magazine dédié à l'Afrique, ses diasporas et ses nations. Il raconte les
-            parcours, les initiatives et les réussites qui relient le continent au reste du monde.
+            HEMLÉ Mag est un magazine dédié à l'Afrique, ses diasporas et ses nations. Il raconte
+            les parcours, les initiatives et les réussites qui relient le continent au reste du
+            monde.
           </p>
           <p className="mt-4 text-muted-foreground">
             HEMLÉ Events prolonge cette mission sous la forme d'un agenda : rendre visibles les
@@ -64,16 +68,16 @@ function APropos() {
           <h2 className="font-display text-2xl font-bold">Comment ça marche</h2>
           <ul className="mt-4 space-y-4 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Consultation libre.</strong> Tous les événements sont
-              accessibles sans compte ni inscription.
+              <strong className="text-foreground">Consultation libre.</strong> Tous les événements
+              sont accessibles sans compte ni inscription.
             </li>
             <li>
-              <strong className="text-foreground">Recherche et filtres.</strong> Par date, pays, ville et
-              catégorie, pour trouver rapidement le bon rendez-vous.
+              <strong className="text-foreground">Recherche et filtres.</strong> Par date, pays,
+              ville et catégorie, pour trouver rapidement le bon rendez-vous.
             </li>
             <li>
-              <strong className="text-foreground">Proposer un événement.</strong> Via le formulaire de
-              proposition ; l'équipe HEMLÉ revient ensuite vers l'organisateur.
+              <strong className="text-foreground">Proposer un événement.</strong> Via le formulaire
+              de proposition ; l'équipe HEMLÉ revient ensuite vers l'organisateur.
             </li>
           </ul>
           <AddEventButton className="mt-6" />

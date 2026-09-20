@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { deleteEvent, fetchAdminEvents, setEventStatus } from "@/lib/admin";
+import { deleteEvent, fetchAdminEvents, fetchMyAccess, setEventStatus } from "@/lib/admin";
 import { EVENT_STATUS_LABELS, formatEventDates, type EventStatus } from "@/lib/events";
 
 export const Route = createFileRoute("/_authenticated/admin/evenements/")({
@@ -37,6 +37,11 @@ function AdminEvents() {
     queryKey: ["admin", "events", q, statut],
     queryFn: () => fetchAdminEvents({ q, statut }),
   });
+  const access = useQuery({ queryKey: ["admin", "my-access"], queryFn: fetchMyAccess });
+  const isAdmin = access.data?.roles.includes("administrateur") ?? false;
+  const canCreate = access.data?.roles.some(
+    (role) => role === "administrateur" || role === "editeur",
+  );
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin"] });
 
@@ -62,11 +67,13 @@ function AdminEvents() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="font-display text-2xl font-bold">Événements</h1>
-        <Button asChild className="ml-auto">
-          <Link to="/admin/evenements/$id" params={{ id: "nouveau" }}>
-            Nouvel événement
-          </Link>
-        </Button>
+        {canCreate ? (
+          <Button asChild className="ml-auto">
+            <Link to="/admin/evenements/$id" params={{ id: "nouveau" }}>
+              Nouvel événement
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -141,16 +148,19 @@ function AdminEvents() {
                     Aperçu
                   </Link>
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => {
-                    if (confirm(`Supprimer « ${event.titre} » ?`)) deleteMutation.mutate(event.id);
-                  }}
-                >
-                  Supprimer
-                </Button>
+                {isAdmin ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    onClick={() => {
+                      if (confirm(`Supprimer « ${event.titre} » ?`))
+                        deleteMutation.mutate(event.id);
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                ) : null}
               </div>
             </li>
           ))}

@@ -18,6 +18,8 @@ import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authentic
 import { Route as EvenementsIndexRouteImport } from './routes/evenements/index'
 import { Route as EvenementsSlugRouteImport } from './routes/evenements/$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminCategoriesRouteImport } from './routes/_authenticated/admin/categories'
+import { Route as AuthenticatedAdminEquipeRouteImport } from './routes/_authenticated/admin/equipe'
 import { Route as AuthenticatedAdminEvenementsIndexRouteImport } from './routes/_authenticated/admin/evenements/index'
 import { Route as AuthenticatedAdminEvenementsIdRouteImport } from './routes/_authenticated/admin/evenements/$id'
 
@@ -65,6 +67,18 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminCategoriesRoute =
+  AuthenticatedAdminCategoriesRouteImport.update({
+    id: '/categories',
+    path: '/categories',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminEquipeRoute =
+  AuthenticatedAdminEquipeRouteImport.update({
+    id: '/equipe',
+    path: '/equipe',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminEvenementsIndexRoute =
   AuthenticatedAdminEvenementsIndexRouteImport.update({
     id: '/evenements/',
@@ -86,6 +100,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/evenements/$slug': typeof EvenementsSlugRoute
   '/evenements/': typeof EvenementsIndexRoute
+  '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
+  '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/evenements/$id': typeof AuthenticatedAdminEvenementsIdRoute
   '/admin/evenements/': typeof AuthenticatedAdminEvenementsIndexRoute
@@ -97,6 +113,8 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/evenements/$slug': typeof EvenementsSlugRoute
   '/evenements': typeof EvenementsIndexRoute
+  '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
+  '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/evenements/$id': typeof AuthenticatedAdminEvenementsIdRoute
   '/admin/evenements': typeof AuthenticatedAdminEvenementsIndexRoute
@@ -111,6 +129,8 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/evenements/$slug': typeof EvenementsSlugRoute
   '/evenements/': typeof EvenementsIndexRoute
+  '/_authenticated/admin/categories': typeof AuthenticatedAdminCategoriesRoute
+  '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/evenements/$id': typeof AuthenticatedAdminEvenementsIdRoute
   '/_authenticated/admin/evenements/': typeof AuthenticatedAdminEvenementsIndexRoute
@@ -125,6 +145,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/evenements/$slug'
     | '/evenements/'
+    | '/admin/categories'
+    | '/admin/equipe'
     | '/admin/'
     | '/admin/evenements/$id'
     | '/admin/evenements/'
@@ -136,6 +158,8 @@ export interface FileRouteTypes {
     | '/categories'
     | '/evenements/$slug'
     | '/evenements'
+    | '/admin/categories'
+    | '/admin/equipe'
     | '/admin'
     | '/admin/evenements/$id'
     | '/admin/evenements'
@@ -149,6 +173,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/evenements/$slug'
     | '/evenements/'
+    | '/_authenticated/admin/categories'
+    | '/_authenticated/admin/equipe'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/evenements/$id'
     | '/_authenticated/admin/evenements/'
@@ -229,6 +255,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/categories': {
+      id: '/_authenticated/admin/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AuthenticatedAdminCategoriesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/equipe': {
+      id: '/_authenticated/admin/equipe'
+      path: '/equipe'
+      fullPath: '/admin/equipe'
+      preLoaderRoute: typeof AuthenticatedAdminEquipeRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/evenements/': {
       id: '/_authenticated/admin/evenements/'
       path: '/evenements'
@@ -247,6 +287,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminCategoriesRoute: typeof AuthenticatedAdminCategoriesRoute
+  AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminEvenementsIdRoute: typeof AuthenticatedAdminEvenementsIdRoute
   AuthenticatedAdminEvenementsIndexRoute: typeof AuthenticatedAdminEvenementsIndexRoute
@@ -254,6 +296,8 @@ interface AuthenticatedAdminRouteRouteChildren {
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
+    AuthenticatedAdminCategoriesRoute: AuthenticatedAdminCategoriesRoute,
+    AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
     AuthenticatedAdminEvenementsIdRoute: AuthenticatedAdminEvenementsIdRoute,
     AuthenticatedAdminEvenementsIndexRoute:

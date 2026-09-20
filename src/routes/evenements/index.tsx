@@ -9,8 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SITE } from "@/lib/site";
 import {
   DATE_FILTERS,
   fetchCategories,
@@ -33,19 +40,25 @@ const DATE_VALUES = DATE_FILTERS.map((d) => d.value) as readonly string[];
 
 export const Route = createFileRoute("/evenements/")({
   validateSearch: (search: Record<string, unknown>): EventSearch => ({
-    q: typeof search['q'] === "string" && search['q'] ? search['q'] : undefined,
+    q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
     date:
-      typeof search['date'] === "string" && DATE_VALUES.includes(search['date'])
-        ? (search['date'] as DateFilter)
+      typeof search["date"] === "string" && DATE_VALUES.includes(search["date"])
+        ? (search["date"] as DateFilter)
         : undefined,
-    pays: typeof search['pays'] === "string" && search['pays'] ? search['pays'] : undefined,
-    ville: typeof search['ville'] === "string" && search['ville'] ? search['ville'] : undefined,
+    pays: typeof search["pays"] === "string" && search["pays"] ? search["pays"] : undefined,
+    ville: typeof search["ville"] === "string" && search["ville"] ? search["ville"] : undefined,
     categorie:
-      typeof search['categorie'] === "string" && search['categorie'] ? search['categorie'] : undefined,
-    type: typeof search['type'] === "string" && search['type'] ? search['type'] : undefined,
-    page: Number(search['page']) > 1 ? Number(search['page']) : undefined,
+      typeof search["categorie"] === "string" && search["categorie"]
+        ? search["categorie"]
+        : undefined,
+    type: typeof search["type"] === "string" && search["type"] ? search["type"] : undefined,
+    page:
+      Number.isSafeInteger(Number(search["page"])) && Number(search["page"]) > 1
+        ? Number(search["page"])
+        : undefined,
   }),
   head: () => ({
+    links: [{ rel: "canonical", href: `${SITE.url}/evenements` }],
     meta: [
       { title: "Tous les événements — HEMLÉ Events" },
       {
@@ -56,13 +69,16 @@ export const Route = createFileRoute("/evenements/")({
       { property: "og:title", content: "Tous les événements — HEMLÉ Events" },
       {
         property: "og:description",
-        content: "L'agenda complet des événements africains et diasporiques, filtrable par date et lieu.",
+        content:
+          "L'agenda complet des événements africains et diasporiques, filtrable par date et lieu.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: async () => ({
+  loaderDeps: ({ search }) => search,
+  loader: async ({ deps }) => ({
+    events: await fetchPublicEvents({ ...deps, perPage: PER_PAGE }),
     categories: await fetchCategories(),
     options: await fetchFilterOptions(),
   }),
@@ -73,7 +89,7 @@ const PER_PAGE = 12;
 
 function Catalogue() {
   const search = Route.useSearch();
-  const { categories, options } = Route.useLoaderData();
+  const { categories, options, events } = Route.useLoaderData();
   const navigate = useNavigate();
   const [term, setTerm] = useState(search.q ?? "");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -84,14 +100,20 @@ function Catalogue() {
   const query = useQuery({
     queryKey: ["events", search],
     queryFn: () => fetchPublicEvents({ ...search, perPage: PER_PAGE }),
+    initialData: events,
   });
 
   const activeTags = [
-    search.date ? { key: "date", label: DATE_FILTERS.find((d) => d.value === search.date)?.label ?? "" } : null,
+    search.date
+      ? { key: "date", label: DATE_FILTERS.find((d) => d.value === search.date)?.label ?? "" }
+      : null,
     search.pays ? { key: "pays", label: search.pays } : null,
     search.ville ? { key: "ville", label: search.ville } : null,
     search.categorie
-      ? { key: "categorie", label: categories.find((c) => c.slug === search.categorie)?.nom ?? search.categorie }
+      ? {
+          key: "categorie",
+          label: categories.find((c) => c.slug === search.categorie)?.nom ?? search.categorie,
+        }
       : null,
     search.type ? { key: "type", label: search.type } : null,
     search.q ? { key: "q", label: `« ${search.q} »` } : null,
@@ -320,7 +342,9 @@ function Catalogue() {
                   <Button
                     variant="outline"
                     disabled={page <= 1}
-                    onClick={() => void navigate({ to: "/evenements", search: { ...search, page: page - 1 } })}
+                    onClick={() =>
+                      void navigate({ to: "/evenements", search: { ...search, page: page - 1 } })
+                    }
                   >
                     Précédent
                   </Button>
@@ -330,7 +354,9 @@ function Catalogue() {
                   <Button
                     variant="outline"
                     disabled={page >= pages}
-                    onClick={() => void navigate({ to: "/evenements", search: { ...search, page: page + 1 } })}
+                    onClick={() =>
+                      void navigate({ to: "/evenements", search: { ...search, page: page + 1 } })
+                    }
                   >
                     Suivant
                   </Button>

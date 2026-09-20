@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
-import { fetchAdminEvents, fetchAdminStats } from "@/lib/admin";
+import { fetchAdminEvents, fetchAdminStats, fetchMyAccess } from "@/lib/admin";
 import { EVENT_STATUS_LABELS, formatEventDates } from "@/lib/events";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -15,6 +15,10 @@ function Dashboard() {
     queryKey: ["admin", "events", "recents"],
     queryFn: () => fetchAdminEvents(),
   });
+  const access = useQuery({ queryKey: ["admin", "my-access"], queryFn: fetchMyAccess });
+  const canCreate = access.data?.roles.some(
+    (role) => role === "administrateur" || role === "editeur",
+  );
 
   const cards = [
     { label: "Publiés", value: stats.data?.counts["publie"] ?? 0 },
@@ -29,11 +33,13 @@ function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-4">
         <h1 className="font-display text-2xl font-bold">Tableau de bord</h1>
-        <Button asChild className="ml-auto">
-          <Link to="/admin/evenements/$id" params={{ id: "nouveau" }}>
-            Nouvel événement
-          </Link>
-        </Button>
+        {canCreate ? (
+          <Button asChild className="ml-auto">
+            <Link to="/admin/evenements/$id" params={{ id: "nouveau" }}>
+              Nouvel événement
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">

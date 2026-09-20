@@ -1,0 +1,16 @@
+{
+  "name": "HEMLÉ Events",
+  "short_name": "HEMLÉ Events",
+  "description": "L’agenda des événements d’Afrique et de ses diasporas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f7f3",
+  "theme_color": "#101817",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}
