@@ -6,7 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { identifierToEmail, normalizeIdentifier } from "@/lib/account";
 
 export const signInWithIdentifier = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         identifier: z.string().min(3).max(48),

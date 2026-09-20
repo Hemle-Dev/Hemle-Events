@@ -18,7 +18,7 @@ async function assertAdmin(context: { supabase: SupabaseClient<Database>; userId
 
 export const createTeamMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         identifier: z.string().min(3).max(48),
@@ -69,7 +69,7 @@ export const createTeamMember = createServerFn({ method: "POST" })
 
 export const setTeamMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z.object({ userId: z.string().uuid(), role: z.enum(ROLES) }).parse(data),
   )
   .handler(async ({ data, context }) => {
@@ -93,7 +93,7 @@ export const setTeamMemberRole = createServerFn({ method: "POST" })
 
 export const setTeamMemberActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z.object({ userId: z.string().uuid(), actif: z.boolean() }).parse(data),
   )
   .handler(async ({ data, context }) => {
@@ -112,7 +112,7 @@ export const setTeamMemberActive = createServerFn({ method: "POST" })
 
 export const changeTeamMemberPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z.object({ userId: z.string().uuid(), password: z.string().min(12).max(128) }).parse(data),
   )
   .handler(async ({ data, context }) => {

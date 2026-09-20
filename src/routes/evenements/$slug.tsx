@@ -43,6 +43,7 @@ export const Route = createFileRoute("/evenements/$slug")({
     const image = event.image_url ?? undefined;
     return {
       meta: [
+        ...(event.demo ? [{ name: "robots", content: "noindex, follow" }] : []),
         { title },
         { name: "description", content: description },
         { property: "og:title", content: title },

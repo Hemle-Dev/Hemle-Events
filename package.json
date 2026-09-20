@@ -17,13 +17,12 @@
     "bootstrap:admin": "node --env-file-if-exists=.env scripts/bootstrap-admin.mjs",
     "migrate:accounts": "node --env-file-if-exists=.env scripts/migrate-legacy-accounts.mjs",
     "cleanup:demo": "node --env-file-if-exists=.env scripts/cleanup-demo-data.mjs",
-    "db:migrate": "node --env-file-if-exists=.env ./node_modules/drizzle-kit/bin.cjs migrate",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate-database.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "overrides": {
-    "js-yaml": "4.3.1",
-    "tsx": "4.20.6"
+    "js-yaml": "4.3.1"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.15",
@@ -54,8 +53,6 @@
     "@types/react": "19.2.0",
     "@types/react-dom": "19.2.0",
     "@vitejs/plugin-react": "5.2.0",
-    "drizzle-kit": "0.31.10",
-    "drizzle-orm": "0.44.7",
     "eslint": "9.32.0",
     "eslint-config-prettier": "10.1.1",
     "eslint-plugin-prettier": "5.2.6",

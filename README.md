@@ -39,7 +39,7 @@ Renseigner au minimum dans `.env` :
 
 Ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY` dans une variable préfixée par `VITE_`.
 
-L’installation utilise Vite 7.3.1 et Tailwind 4.1.18 avec un verrou npm versionné. Ne pas utiliser `--force` ou `--legacy-peer-deps`. Les overrides `tsx` et `js-yaml` évitent des versions transitives indisponibles dans le registre utilisé pour ce projet.
+L’installation utilise Vite 7.3.1 et Tailwind 4.1.18 avec un verrou npm versionné. Ne pas utiliser `--force` ou `--legacy-peer-deps`. L’override `js-yaml` évite une version transitive indisponible dans le registre utilisé pour ce projet. Les migrations SQL utilisent directement le pilote PostgreSQL, sans générateur de schéma.
 
 ## Base de données
 
@@ -69,6 +69,8 @@ npm run bootstrap:admin
 
 Le script est idempotent. Il ne remplace pas le mot de passe d’un compte existant, sauf si `BOOTSTRAP_ADMIN_FORCE_PASSWORD=true`. Les administrateurs peuvent ensuite créer les autres comptes et modifier leurs mots de passe depuis `/admin/equipe`.
 
+Préférer définir le mot de passe dans le fichier `.env` local protégé plutôt que dans la ligne de commande, pour éviter son enregistrement dans l’historique du terminal. Aucun mot de passe administrateur prédéfini n’est fourni.
+
 Après le premier démarrage en production, retirer `BOOTSTRAP_ADMIN_PASSWORD` de l’environnement du conteneur.
 
 ## Nettoyage avant ouverture publique
@@ -94,6 +96,8 @@ npm test
 npm run build
 # ou l’ensemble : npm run check
 ```
+
+Après démarrage du serveur compilé : `SMOKE_BASE_URL=http://localhost:3000 node scripts/smoke-test.mjs` vérifie les pages publiques, les canoniques, les réponses 404, le sitemap et les directives d’indexation. Ces tests nécessitent une connexion Supabase fonctionnelle.
 
 ## Docker
 
