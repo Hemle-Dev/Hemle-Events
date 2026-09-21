@@ -5,10 +5,18 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
-export default defineConfig({
-  plugins: [tsConfigPaths(), tailwindcss(), tanstackStart(), nitro(), viteReact()],
+export default defineConfig(({ command }) => ({
+  // TanStack Start serves development requests directly. Nitro is only needed
+  // to package the production Node server, not as a second dev proxy.
+  plugins: [
+    tsConfigPaths(),
+    tailwindcss(),
+    tanstackStart(),
+    ...(command === "build" ? [nitro()] : []),
+    viteReact(),
+  ],
   server: {
     host: true,
     port: 3000,
   },
-});
+}));

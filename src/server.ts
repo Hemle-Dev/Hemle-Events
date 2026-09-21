@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { seoResponse } from "./lib/seo.server";
+import { withResponseHeaders } from "./lib/response-headers";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,26 +48,22 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const pathname = new URL(request.url).pathname;
     try {
       const seo = await seoResponse(request);
-      if (seo) return seo;
+      if (seo) return withResponseHeaders(seo, pathname);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      const pathname = new URL(request.url).pathname;
-      if (pathname === "/auth" || pathname.startsWith("/admin") || response.status >= 400) {
-        response.headers.set("X-Robots-Tag", "noindex, nofollow");
-        response.headers.set("Cache-Control", "private, no-store");
-      }
-      response.headers.set("X-Content-Type-Options", "nosniff");
-      response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-      response.headers.set("X-Frame-Options", "DENY");
-      return await normalizeCatastrophicSsrResponse(response);
+      return withResponseHeaders(await normalizeCatastrophicSsrResponse(response), pathname);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return withResponseHeaders(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+        pathname,
+      );
     }
   },
 };

@@ -49,8 +49,19 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-md">
       <div className="container-page flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2" aria-label="HEMLÉ Events, accueil">
-          <img src="/hemle-logo.png" alt="Logo HEMLÉ Mag" className="h-9 w-auto" />
+        <Link
+          to="/"
+          className="flex shrink-0 items-center gap-2"
+          aria-label="HEMLÉ Events, accueil"
+        >
+          <img
+            src="/hemle-logo.png?v=20260921"
+            alt="Logo HEMLÉ Mag"
+            width={1080}
+            height={616}
+            loading="eager"
+            className="block h-12 w-[84px] shrink-0 object-contain"
+          />
           <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
             Events
           </span>
