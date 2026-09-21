@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signInWithIdentifier } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth")({
-  ssr: false,
+  // Render the public login form immediately; only session detection needs the browser.
   head: () => ({
     meta: [
       { title: "Espace équipe — HEMLÉ Events" },

@@ -55,7 +55,7 @@ export function SiteHeader() {
           aria-label="HEMLÉ Events, accueil"
         >
           <img
-            src="/hemle-logo.png?v=20260921"
+            src="/hemle-logo.png"
             alt="Logo HEMLÉ Mag"
             width={1080}
             height={616}

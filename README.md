@@ -257,6 +257,16 @@ node --env-file=.env --run dev
 
 Vite utilise le port `3000` par défaut et peut en choisir un autre si nécessaire : lire l’URL affichée dans le terminal. La configuration écoute sur toutes les interfaces ; utiliser un réseau de confiance en développement.
 
+En développement, TanStack Start/Vite sert directement les pages et fichiers ; le plugin Nitro est activé uniquement pour le build de production. Le proxy de développement Nitro de la version installée provoquait des flux d’images corrompus après 64 Kio et des redirections erronées des modules de routes dynamiques, bloquant le chargement de `/auth`.
+
+Après une modification de `vite.config.ts`, redémarrer le serveur puis recharger le navigateur sans cache. Pour contrôler le transfert du logo, les modules dynamiques et le formulaire de connexion sans utiliser de compte :
+
+```bash
+DEV_BASE_URL=http://localhost:3000 node scripts/check-dev-server.mjs
+```
+
+Remplacer l’adresse par celle utilisée dans le navigateur pour vérifier également l’accès réseau. Ce test cible le serveur de développement, pas le serveur compilé.
+
 ### Contrôles
 
 ```bash
@@ -304,6 +314,21 @@ docker compose images
 ```
 
 Le Dockerfile utilise Node 22 Alpine, `npm ci`, une compilation multi-étapes et un utilisateur non privilégié à l’exécution. Ne pas ajouter les secrets serveur comme arguments de build.
+
+Le verrou inclut les variantes natives de Lightning CSS et esbuild, notamment Linux musl pour Alpine. `npm test` contrôle leur présence et leur version. Conserver et versionner `package.json` **et** `package-lock.json` ensemble ; ne pas remplacer `npm ci` dans le Dockerfile par une installation forcée.
+
+Si Docker signale `EUSAGE` / `Missing: ... from lock file`, utiliser le verrou corrigé puis relancer `docker compose build web`. Pour une future réparation du verrou, travailler dans un dossier temporaire sans `node_modules`, avec la version de npm indiquée dans le journal Docker (10.9.8 lors du diagnostic) :
+
+```bash
+lock_check_dir=$(mktemp -d)
+cp package.json package-lock.json "$lock_check_dir/"
+npm exec --yes --package=npm@10.9.8 -- npm install --prefix "$lock_check_dir" --package-lock-only --ignore-scripts --no-audit --no-fund
+npm exec --yes --package=npm@10.9.8 -- npm ci --prefix "$lock_check_dir" --no-audit --no-fund
+# Seulement après réussite : examiner le diff avant de conserver le verrou.
+diff -u package-lock.json "$lock_check_dir/package-lock.json"
+```
+
+La commande `diff` renvoie normalement le code 1 lorsqu’il y a des différences. Cette procédure ne modifie ni les dépendances installées du projet ni ses données et ne construit aucune image.
 
 ### Démarrer et contrôler
 
