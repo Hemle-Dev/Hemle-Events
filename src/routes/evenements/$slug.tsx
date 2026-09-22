@@ -5,16 +5,16 @@ import {
   Clock,
   ExternalLink,
   Facebook,
-  Link2,
   Linkedin,
   MapPin,
   MessageCircle,
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 import { EventGrid } from "@/components/event-card";
+import { EventPoster } from "@/components/event-poster";
+import { CopyEventLink } from "@/components/copy-event-link";
 import { PublicLayout, SectionHeading } from "@/components/public-layout";
 import { AddEventButton } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
@@ -113,7 +113,7 @@ export const Route = createFileRoute("/evenements/$slug")({
 
 function ShareBar({ event }: { event: EventWithCategory }) {
   const [url, setUrl] = useState(`${SITE.url}/evenements/${event.slug}`);
-  useEffect(() => setUrl(window.location.href), []);
+  useEffect(() => setUrl(window.location.href), [event.slug]);
   const text = encodeURIComponent(`${event.titre} — HEMLÉ Events`);
 
   const items = [
@@ -143,17 +143,7 @@ function ShareBar({ event }: { event: EventWithCategory }) {
           </a>
         </Button>
       ))}
-      <Button
-        variant="outline"
-        size="icon"
-        aria-label="Copier le lien"
-        title="Copier le lien"
-        onClick={() => {
-          void navigator.clipboard.writeText(url).then(() => toast.success("Lien copié"));
-        }}
-      >
-        <Link2 aria-hidden="true" />
-      </Button>
+      <CopyEventLink url={url} />
     </div>
   );
 }
@@ -164,33 +154,18 @@ function EventDetail() {
   return (
     <PublicLayout>
       <article>
-        <div className="relative h-[42vh] min-h-72 w-full overflow-hidden bg-neutral-900">
-          {event.image_url ? (
-            <>
-              {/* Fond flouté : l'affiche reste entière et non déformée, même en format carré. */}
-              <img
-                src={event.image_url}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 size-full scale-110 object-cover blur-2xl"
-              />
-              <img
-                src={event.image_url}
-                alt={event.image_alt ?? event.titre}
-                className="relative mx-auto h-full w-auto max-w-full object-contain"
-              />
-            </>
+        <EventPoster
+          key={event.image_url}
+          src={event.image_url}
+          alt={event.image_alt ?? event.titre}
+        >
+          {event.categories ? (
+            <Badge className="bg-primary text-primary-foreground">{event.categories.nom}</Badge>
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-black/10" />
-          <div className="container-page absolute inset-x-0 bottom-0 pb-8">
-            {event.categories ? (
-              <Badge className="bg-primary text-primary-foreground">{event.categories.nom}</Badge>
-            ) : null}
-            <h1 className="mt-3 max-w-3xl text-balance-tight font-display text-3xl font-bold text-white sm:text-5xl">
-              {event.titre}
-            </h1>
-          </div>
-        </div>
+          <h1 className="mt-3 max-w-3xl text-balance-tight font-display text-3xl font-bold text-white sm:text-5xl">
+            {event.titre}
+          </h1>
+        </EventPoster>
 
         <div className="container-page grid gap-12 py-12 lg:grid-cols-[1fr_320px]">
           <div>

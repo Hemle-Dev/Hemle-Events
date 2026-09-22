@@ -223,6 +223,32 @@ docker compose up -d --force-recreate web
 
 Pour récupérer un administrateur, définir temporairement un nouveau mot de passe et `BOOTSTRAP_ADMIN_FORCE_PASSWORD=true`, exécuter `npm run bootstrap:admin` depuis l’hôte, puis remettre les valeurs de sécurité. Aucun mot de passe administrateur par défaut n’est fourni.
 
+## Affiches et enregistrement des événements
+
+La fiche publique conserve son bandeau avec le titre superposé. Un clic sur l’image ou sur **Voir l’affiche** ouvre une vue plein écran avec zoom. À la souris, maintenir le bouton et tirer directement l’affiche vers le bas agrandit le bandeau ; tirer vers le haut le réduit. Les flèches haut/bas fonctionnent lorsque l’image a le focus. Sur écran tactile, le défilement naturel est conservé et un appui ouvre l’affiche. Échap ou la croix ferment la vue agrandie.
+
+Le bouton de copie affiche une coche et **Lien copié !** après réussite. En cas de refus du navigateur, il signale l’échec sans afficher de fausse confirmation.
+
+Dans l’administration :
+
+- Le fichier choisi reste un aperçu local jusqu’au clic sur **Enregistrer**. Annuler ou choisir une autre image ne crée pas de fichier dans Storage.
+- L’enregistrement utilise les droits du compte connecté ; après réussite, la page revient à `/admin/evenements`, pour une création comme pour une modification.
+- La nouvelle image reçoit une URL distincte pour éviter le cache de l’ancienne. L’ancienne image du bucket `event-images` est supprimée via l’API Storage **après** l’enregistrement, seulement si aucun événement ne la référence encore. Les images externes sont conservées.
+- Un échec d’enregistrement conserve l’ancienne image ; le nouveau fichier est nettoyé s’il n’a pas été référencé. Un échec de nettoyage est signalé explicitement. Aucune purge rétroactive des anciens fichiers orphelins n’est effectuée.
+- La suppression est définitive sans sauvegarde Storage. Le contrôle des références et la suppression nécessitent `SUPABASE_SERVICE_ROLE_KEY` côté serveur uniquement. Les migrations existantes suffisent ; aucune nouvelle migration n’est nécessaire pour cette fonctionnalité.
+
+Tests locaux sans modification des données réelles : `npm test` couvre le cycle de remplacement et les appels Supabase simulés. Pour les interactions visuelles, avec Google Chrome installé :
+
+```bash
+# Terminal 1 : serveur de composants isolé, sans connexion à Supabase.
+npm run dev -- --config tests/browser/vite.config.ts
+
+# Terminal 2 : clic, glissement, zoom, fermeture et retour de copie.
+node scripts/test-poster-browser.mjs
+```
+
+Le test vérifie les formats mobile, bureau et paysage, utilise un presse-papiers simulé et indique le dossier temporaire des captures. La recette finale d’enregistrement sur votre instance Supabase reste nécessaire.
+
 ## Nettoyage des données factices
 
 Sauvegarder avant suppression. Le nettoyage cible **uniquement les événements marqués `demo = true`** et conserve les catégories, les comptes et les autres événements.

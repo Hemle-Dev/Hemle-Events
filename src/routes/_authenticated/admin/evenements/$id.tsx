@@ -15,13 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  fetchAdminEvent,
-  fetchMyAccess,
-  saveEvent,
-  uploadEventImage,
-  type EventInsert,
-} from "@/lib/admin";
+import { fetchAdminEvent, fetchMyAccess, type EventInsert } from "@/lib/admin";
+import { saveEventWithImage } from "@/lib/event-save.functions";
+import { validateEventImage } from "@/lib/event-image";
 import { EVENT_STATUS_LABELS, fetchCategories, slugify, type EventStatus } from "@/lib/events";
 
 export const Route = createFileRoute("/_authenticated/admin/evenements/$id")({
@@ -80,12 +76,27 @@ const EMPTY: FormState = {
 
 function EventEditor() {
   const { id } = Route.useParams();
+  return <EventEditorForm key={id} id={id} />;
+}
+
+function EventEditorForm({ id }: { id: string }) {
   const isNew = id === "nouveau";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   const categories = useQuery({ queryKey: ["admin", "categories"], queryFn: fetchCategories });
   const access = useQuery({ queryKey: ["admin", "my-access"], queryFn: fetchMyAccess });
@@ -93,6 +104,8 @@ function EventEditor() {
     queryKey: ["admin", "event", id],
     queryFn: () => fetchAdminEvent(id),
     enabled: !isNew,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   useEffect(() => {
@@ -163,12 +176,17 @@ function EventEditor() {
               ? new Date(form.published_at).toISOString()
               : null,
       };
-      return saveEvent(isNew ? null : id, payload);
+      const data = new FormData();
+      if (!isNew) data.set("id", id);
+      data.set("values", JSON.stringify(payload));
+      if (imageFile) data.set("image", imageFile);
+      return saveEventWithImage({ data });
     },
-    onSuccess: (savedId) => {
+    onSuccess: ({ warning }) => {
       toast.success("Événement enregistré");
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
-      if (isNew) navigate({ to: "/admin/evenements/$id", params: { id: savedId } });
+      if (warning) toast.warning(warning, { duration: 10000 });
+      void queryClient.invalidateQueries({ queryKey: ["admin"] });
+      void navigate({ to: "/admin/evenements" });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -190,12 +208,17 @@ function EventEditor() {
     );
   }
 
+  if (!isNew && existing.isPending) return <p>Chargement de l’événement…</p>;
+  if (!isNew && (existing.isError || !existing.data)) {
+    return <p role="alert">Impossible de charger cet événement. Rechargez la page.</p>;
+  }
+
   return (
     <form
       className="space-y-8"
       onSubmit={(event) => {
         event.preventDefault();
-        mutation.mutate();
+        if (!mutation.isPending) mutation.mutate();
       }}
     >
       <div className="flex flex-wrap items-center gap-3">
@@ -204,7 +227,9 @@ function EventEditor() {
         </h1>
         <div className="ml-auto flex gap-2">
           <Button asChild variant="outline" type="button">
-            <Link to="/admin/evenements">Retour</Link>
+            <Link to="/admin/evenements" disabled={mutation.isPending}>
+              Retour
+            </Link>
           </Button>
           {!isNew && form.slug ? (
             <Button asChild variant="outline" type="button">
@@ -219,7 +244,7 @@ function EventEditor() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <fieldset disabled={mutation.isPending} className="grid gap-6 lg:grid-cols-3">
         <section className="space-y-4 rounded-2xl border border-border bg-card p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-bold">Contenu</h2>
           <Field label="Titre" required>
@@ -253,8 +278,12 @@ function EventEditor() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Image principale (URL)">
               <Input
+                type="url"
                 value={form.image_url}
-                onChange={(e) => update("image_url", e.target.value)}
+                onChange={(e) => {
+                  setImageFile(null);
+                  update("image_url", e.target.value);
+                }}
                 placeholder="https://…"
               />
             </Field>
@@ -266,28 +295,34 @@ function EventEditor() {
             <Input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/avif"
-              disabled={imageUploading}
-              onChange={async (event) => {
+              onChange={(event) => {
                 const file = event.target.files?.[0];
+                event.target.value = "";
                 if (!file) return;
-                setImageUploading(true);
                 try {
-                  const url = await uploadEventImage(file);
-                  update("image_url", url);
-                  toast.success("Image téléversée");
+                  validateEventImage(file);
+                  setImageFile(file);
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Téléversement impossible");
-                } finally {
-                  setImageUploading(false);
-                  event.target.value = "";
+                  toast.error(error instanceof Error ? error.message : "Image invalide");
                 }
               }}
             />
-            <p className="text-xs text-muted-foreground">JPEG, PNG, WebP ou AVIF · 8 Mo maximum.</p>
+            <p className="text-xs text-muted-foreground">
+              JPEG, PNG, WebP ou AVIF · 8 Mo maximum. Le fichier est envoyé à l’enregistrement, puis
+              l’ancienne image est supprimée si aucun autre événement ne l’utilise.
+            </p>
+            {imageFile ? (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="break-all">Nouvelle image : {imageFile.name}</span>
+                <Button type="button" variant="outline" onClick={() => setImageFile(null)}>
+                  Annuler le remplacement
+                </Button>
+              </div>
+            ) : null}
           </Field>
-          {form.image_url ? (
+          {imagePreview || form.image_url ? (
             <img
-              src={form.image_url}
+              src={imagePreview ?? form.image_url}
               alt=""
               className="max-h-56 w-full rounded-xl bg-muted object-contain"
             />
@@ -441,7 +476,7 @@ function EventEditor() {
             />
           </Field>
         </section>
-      </div>
+      </fieldset>
     </form>
   );
 }
