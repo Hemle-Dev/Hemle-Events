@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Star } from "lucide-react";
+import { canFeatureEvent } from "@/lib/event-dates";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { deleteEvent, fetchAdminEvents, fetchMyAccess, setEventStatus } from "@/lib/admin";
+import {
+  deleteEvent,
+  fetchAdminEvents,
+  fetchMyAccess,
+  setEventStatus,
+  setEventFeatured,
+} from "@/lib/admin";
 import { EVENT_STATUS_LABELS, formatEventDates, type EventStatus } from "@/lib/events";
 
 export const Route = createFileRoute("/_authenticated/admin/evenements/")({
@@ -50,6 +58,16 @@ function AdminEvents() {
     onSuccess: () => {
       toast.success("Statut mis à jour");
       invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const featureMutation = useMutation({
+    mutationFn: ({ id, featured }: { id: string; featured: boolean }) =>
+      setEventFeatured(id, featured),
+    onSuccess: (_data, variables) => {
+      toast.success(variables.featured ? "Événement mis à la une" : "Événement retiré de la une");
+      void invalidate();
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -120,6 +138,23 @@ function AdminEvents() {
                 {EVENT_STATUS_LABELS[event.statut]}
               </span>
               <div className="ml-auto flex flex-wrap gap-2">
+                {event.mise_en_avant || canFeatureEvent(event) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={featureMutation.isPending}
+                    aria-pressed={event.mise_en_avant}
+                    onClick={() =>
+                      featureMutation.mutate({ id: event.id, featured: !event.mise_en_avant })
+                    }
+                  >
+                    <Star
+                      className={event.mise_en_avant ? "fill-current" : ""}
+                      aria-hidden="true"
+                    />
+                    {event.mise_en_avant ? "Retirer de la une" : "Mettre à la une"}
+                  </Button>
+                ) : null}
                 {event.statut !== "publie" ? (
                   <Button
                     size="sm"

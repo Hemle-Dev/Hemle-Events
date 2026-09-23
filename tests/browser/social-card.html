@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Carte de partage HEMLÉ Events</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #f8f7f3;
+        color: #153d40;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        border-top: 14px solid #168d87;
+      }
+      section {
+        padding: 36px 64px 54px;
+      }
+      img {
+        width: 180px;
+        height: 103px;
+        object-fit: contain;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 34px;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      h1 {
+        margin: 0;
+        font-size: 62px;
+        line-height: 1.08;
+        letter-spacing: -2px;
+      }
+      p {
+        font-size: 24px;
+        line-height: 1.5;
+        margin: 26px 0 0;
+      }
+      aside {
+        background: #153d40;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 44px;
+        gap: 22px;
+      }
+      aside strong {
+        color: #67d6c2;
+        font-size: 17px;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+      }
+      aside span {
+        font-size: 27px;
+        border-bottom: 1px solid #ffffff30;
+        padding-bottom: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <div class="brand"><img src="/hemle-logo.png" alt="HEMLÉ Mag" /> EVENTS</div>
+        <h1>L’Afrique.<br />Ses diasporas.<br />Vos rendez-vous.</h1>
+        <p>Découvrez l’agenda des événements<br />qui nous rassemblent.</p>
+      </section>
+      <aside>
+        <strong>À découvrir</strong><span>Culture &amp; festivals</span
+        ><span>Business &amp; rencontres</span><span>Sport &amp; communauté</span>
+      </aside>
+    </main>
+  </body>
+</html>

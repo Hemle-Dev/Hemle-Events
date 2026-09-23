@@ -16,6 +16,8 @@ test("server save uses caller permissions, checks persisted references and delet
   let shared = false;
   let denied = false;
   let hideRow = false;
+  let slugCollisions = 0;
+  const attemptedSlugs: string[] = [];
   const calls: { method: string; path: string; token: string | null }[] = [];
   const deleted: string[] = [];
   const json = (body: unknown, status = 200) =>
@@ -57,6 +59,18 @@ test("server save uses caller permissions, checks persisted references and delet
     assert.equal(headers.get("authorization"), "Bearer user-token");
     if (method === "PATCH") assert.equal(url.searchParams.get("updated_at"), `eq.${updated}`);
     if (denied) return json({ message: "RLS denied", code: "42501" }, 403);
+    attemptedSlugs.push(JSON.parse(String(init?.body)).slug);
+    if (slugCollisions > 0) {
+      slugCollisions--;
+      return json(
+        {
+          message: 'duplicate key value violates unique constraint "events_slug_key"',
+          code: "23505",
+          details: "Key (slug) already exists",
+        },
+        409,
+      );
+    }
     savedUrl = JSON.parse(String(init?.body)).image_url;
     return json({ id });
   };
@@ -124,6 +138,19 @@ test("server save uses caller permissions, checks persisted references and delet
       ["POST", "POST"],
     );
     assert.deepEqual(deleted, []);
+    calls.length = 0;
+    attemptedSlugs.length = 0;
+    slugCollisions = 2;
+    await persistEventWithImage(client, null, { ...values, organisateur: "Promoteur B" }, file);
+    assert.deepEqual(attemptedSlugs, ["test", "test-promoteur-b", "test-promoteur-b-3"]);
+    assert.equal(
+      calls.filter((call) => call.path.startsWith("/storage/") && call.method === "POST").length,
+      1,
+      "Slug retries do not re-upload the image",
+    );
+
+    slugCollisions = 1;
+    await assert.rejects(persistEventWithImage(client, id, values, null), /URL est déjà utilisée/);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env["SUPABASE_URL"];

@@ -37,6 +37,8 @@ export type Database = {
       };
       events: {
         Row: {
+          annuel: boolean;
+          description_format: "plain" | "formatted";
           category_id: string | null;
           created_at: string;
           date_debut: string;
@@ -67,6 +69,8 @@ export type Database = {
           ville: string;
         };
         Insert: {
+          annuel?: boolean;
+          description_format?: "plain" | "formatted";
           category_id?: string | null;
           created_at?: string;
           date_debut: string;
@@ -97,6 +101,8 @@ export type Database = {
           ville: string;
         };
         Update: {
+          annuel?: boolean;
+          description_format?: "plain" | "formatted";
           category_id?: string | null;
           created_at?: string;
           date_debut?: string;
@@ -189,7 +195,13 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      event_occurrences: {
+        Row: Database["public"]["Tables"]["events"]["Row"] & {
+          occurrence_start: string;
+          occurrence_end: string;
+        };
+        Relationships: Database["public"]["Tables"]["events"]["Relationships"];
+      };
     };
     Functions: {
       has_role: {

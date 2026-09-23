@@ -29,10 +29,47 @@ INSERT INTO public.user_roles(user_id,role) VALUES
 INSERT INTO public.events(titre,slug,date_debut,pays,ville,statut)
 VALUES ('Secret','test-secret',current_date,'Cameroun','Douala','brouillon');
 
+CREATE TEMP TABLE events_before_features AS SELECT id, to_jsonb(e) AS value FROM public.events e;
+\ir ../drizzle/migrations/20260923150252_annual_events_description.sql
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM events_before_features old LEFT JOIN public.events e USING(id)
+   WHERE e.id IS NULL OR (to_jsonb(e) - 'annuel' - 'description_format') IS DISTINCT FROM old.value) THEN
+   RAISE EXCEPTION 'Existing event changed during additive migration';
+ END IF;
+ IF EXISTS (SELECT 1 FROM public.events WHERE annuel OR description_format <> 'plain') THEN
+   RAISE EXCEPTION 'Legacy event unexpectedly converted';
+ END IF;
+ IF public.next_event_annual_date('2020-09-22','2026-09-23') <> '2027-09-22' THEN RAISE EXCEPTION 'Annual rollover'; END IF;
+ IF public.next_event_annual_date('2020-09-23','2026-09-23') <> '2026-09-23' THEN RAISE EXCEPTION 'Annual today'; END IF;
+ IF public.next_event_annual_date('2024-02-29','2026-09-23') <> '2028-02-29' THEN RAISE EXCEPTION 'Leap year'; END IF;
+ IF public.next_event_annual_date('2030-01-01','2026-09-23') <> '2030-01-01' THEN RAISE EXCEPTION 'First edition'; END IF;
+ INSERT INTO public.events(titre,slug,date_debut,pays,ville,statut,annuel)
+ VALUES ('Annual','test-annual','2020-01-01','CM','Douala','publie',true);
+ IF NOT EXISTS (SELECT 1 FROM public.event_occurrences WHERE slug='test-annual' AND occurrence_start >= current_date) THEN RAISE EXCEPTION 'Annual missing from agenda'; END IF;
+ BEGIN
+   INSERT INTO public.events(titre,slug,date_debut,date_fin,pays,ville,annuel) VALUES ('Bad annual','bad-annual','2020-01-01','2020-01-02','CM','Douala',true);
+   RAISE EXCEPTION 'Multi-day annual accepted';
+ EXCEPTION WHEN check_violation THEN NULL;
+ END;
+ INSERT INTO public.events(titre,slug,date_debut,pays,ville) VALUES ('Past','test-past',current_date - 10,'CM','Douala');
+ BEGIN
+   UPDATE public.events SET mise_en_avant=true WHERE slug='test-past';
+   RAISE EXCEPTION 'Past event featured';
+ EXCEPTION WHEN check_violation THEN NULL;
+ END;
+ UPDATE public.events SET mise_en_avant=true WHERE slug='test-annual';
+END $$;
+
 SET ROLE anon;
 DO $$ BEGIN
  IF EXISTS (SELECT 1 FROM public.events WHERE slug='test-secret') THEN
    RAISE EXCEPTION 'Anonymous read leaked draft';
+ END IF;
+ IF EXISTS (SELECT 1 FROM public.event_occurrences WHERE slug='test-secret') THEN
+   RAISE EXCEPTION 'View leaked draft';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.event_occurrences WHERE slug='test-annual') THEN
+   RAISE EXCEPTION 'View hides published annual';
  END IF;
  IF NOT EXISTS (SELECT 1 FROM public.events WHERE statut='publie') THEN
    RAISE EXCEPTION 'Public events not visible';

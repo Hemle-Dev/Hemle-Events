@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { eventToday, nextAnnualDate } from "@/lib/event-dates";
 
 export type EventRow = Database["public"]["Tables"]["events"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -7,6 +8,18 @@ export type EventStatus = Database["public"]["Enums"]["event_status"];
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
 export type EventWithCategory = EventRow & { categories: CategoryRow | null };
+function projectOccurrence(
+  event: EventWithCategory & { occurrence_start?: string; occurrence_end?: string },
+): EventWithCategory {
+  return event.annuel && event.occurrence_start
+    ? {
+        ...event,
+        date_debut: event.occurrence_start,
+        date_fin: event.occurrence_end ?? event.occurrence_start,
+        date_fin_effective: event.occurrence_end ?? event.occurrence_start,
+      }
+    : event;
+}
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   brouillon: "Brouillon",
@@ -41,7 +54,7 @@ function iso(date: Date) {
 }
 
 export function dateRangeFor(filter: DateFilter): { start: string; end?: string } {
-  const now = new Date();
+  const now = new Date(`${eventToday()}T12:00:00`);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (filter) {
@@ -90,7 +103,7 @@ export type EventFilters = {
 
 function publicEventsQuery() {
   return supabase
-    .from("events")
+    .from("event_occurrences")
     .select(SELECT_WITH_CATEGORY, { count: "exact" })
     .or(publicStatusFilter());
 }
@@ -105,8 +118,8 @@ export async function fetchPublicEvents(filters: EventFilters = {}) {
   let query = publicEventsQuery();
 
   const range = dateRangeFor(filters.date ?? "prochainement");
-  query = query.gte("date_fin_effective", range.start);
-  if (range.end) query = query.lte("date_debut", range.end);
+  query = query.gte("occurrence_end", range.start);
+  if (range.end) query = query.lte("occurrence_start", range.end);
 
   if (filters.q?.trim()) {
     const term = filters.q.trim().replace(/[%,()]/g, " ");
@@ -134,38 +147,43 @@ export async function fetchPublicEvents(filters: EventFilters = {}) {
 
   const from = (page - 1) * perPage;
   const { data, error, count } = await query
-    .order("date_debut", { ascending: true })
+    .order("occurrence_start", { ascending: true })
     .range(from, from + perPage - 1);
 
   if (error) throw error;
-  return { events: (data ?? []) as EventWithCategory[], total: count ?? 0, page, perPage };
+  return {
+    events: ((data ?? []) as EventWithCategory[]).map(projectOccurrence),
+    total: count ?? 0,
+    page,
+    perPage,
+  };
 }
 
 export async function fetchHighlights() {
-  const today = iso(new Date());
+  const today = eventToday();
   const base = () =>
     supabase
-      .from("events")
+      .from("event_occurrences")
       .select(SELECT_WITH_CATEGORY)
       .or(publicStatusFilter())
-      .gte("date_fin_effective", today);
+      .gte("occurrence_end", today);
 
   const weekend = dateRangeFor("week-end");
 
   const [aLaUne, ceWeekEnd, prochains] = await Promise.all([
-    base().eq("mise_en_avant", true).order("date_debut").limit(3),
+    base().eq("mise_en_avant", true).order("occurrence_start").limit(3),
     base()
-      .gte("date_fin_effective", weekend.start)
-      .lte("date_debut", weekend.end!)
-      .order("date_debut")
+      .gte("occurrence_end", weekend.start)
+      .lte("occurrence_start", weekend.end!)
+      .order("occurrence_start")
       .limit(3),
-    base().order("date_debut").limit(6),
+    base().order("occurrence_start").limit(6),
   ]);
 
   return {
-    aLaUne: (aLaUne.data ?? []) as EventWithCategory[],
-    ceWeekEnd: (ceWeekEnd.data ?? []) as EventWithCategory[],
-    prochains: (prochains.data ?? []) as EventWithCategory[],
+    aLaUne: ((aLaUne.data ?? []) as EventWithCategory[]).map(projectOccurrence),
+    ceWeekEnd: ((ceWeekEnd.data ?? []) as EventWithCategory[]).map(projectOccurrence),
+    prochains: ((prochains.data ?? []) as EventWithCategory[]).map(projectOccurrence),
   };
 }
 
@@ -176,14 +194,14 @@ export async function fetchCategories() {
 }
 
 export async function fetchCategoriesWithCounts() {
-  const today = iso(new Date());
+  const today = eventToday();
   const [cats, events] = await Promise.all([
     fetchCategories(),
     supabase
-      .from("events")
+      .from("event_occurrences")
       .select("category_id")
       .or(publicStatusFilter())
-      .gte("date_fin_effective", today),
+      .gte("occurrence_end", today),
   ]);
   const counts = new Map<string, number>();
   for (const row of events.data ?? []) {
@@ -194,36 +212,36 @@ export async function fetchCategoriesWithCounts() {
 
 export async function fetchEventBySlug(slug: string) {
   const { data, error } = await supabase
-    .from("events")
+    .from("event_occurrences")
     .select(SELECT_WITH_CATEGORY)
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
-  return (data as EventWithCategory | null) ?? null;
+  return data ? projectOccurrence(data as EventWithCategory) : null;
 }
 
 export async function fetchSimilarEvents(event: EventWithCategory) {
-  const today = iso(new Date());
+  const today = eventToday();
   let query = supabase
-    .from("events")
+    .from("event_occurrences")
     .select(SELECT_WITH_CATEGORY)
     .or(publicStatusFilter())
     .neq("id", event.id)
-    .gte("date_fin_effective", today)
-    .order("date_debut")
+    .gte("occurrence_end", today)
+    .order("occurrence_start")
     .limit(3);
   if (event.category_id) query = query.eq("category_id", event.category_id);
   const { data } = await query;
-  return (data ?? []) as EventWithCategory[];
+  return ((data ?? []) as EventWithCategory[]).map(projectOccurrence);
 }
 
 export async function fetchFilterOptions() {
-  const today = iso(new Date());
+  const today = eventToday();
   const { data } = await supabase
-    .from("events")
+    .from("event_occurrences")
     .select("pays, ville, type_evenement")
     .or(publicStatusFilter())
-    .gte("date_fin_effective", today);
+    .gte("occurrence_end", today);
   const pays = [...new Set((data ?? []).map((d) => d.pays).filter(Boolean))].sort();
   const villes = [...new Set((data ?? []).map((d) => d.ville).filter(Boolean))].sort();
   const types = [
@@ -265,14 +283,16 @@ export function formatShortDay(value: string) {
 }
 
 export function formatEventDates(
-  event: Pick<EventRow, "date_debut" | "date_fin" | "heure_debut" | "heure_fin">,
+  event: Pick<EventRow, "date_debut" | "date_fin" | "heure_debut" | "heure_fin"> & {
+    annuel?: boolean;
+  },
 ) {
-  const start = formatDay(event.date_debut);
+  const start = formatDay(event.annuel ? nextAnnualDate(event.date_debut) : event.date_debut);
   const heure = event.heure_debut ? ` · ${event.heure_debut.slice(0, 5)}` : "";
-  if (event.date_fin && event.date_fin !== event.date_debut) {
+  if (!event.annuel && event.date_fin && event.date_fin !== event.date_debut) {
     return `Du ${start} au ${formatDay(event.date_fin)}`;
   }
-  return `${start}${heure}`;
+  return `${start}${heure}${event.annuel ? " · Chaque année" : ""}`;
 }
 
 export function slugify(value: string) {

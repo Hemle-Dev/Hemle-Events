@@ -126,6 +126,7 @@ Les SQL de référence sont dans `drizzle/migrations/`. Le nom du dossier est hi
 | `0001_add_date_fin_effective.sql`     | Date de fin effective utilisée pour les filtres                                     |
 | `0002_secure_identifier_accounts.sql` | Identifiants normalisés et uniques, droits des comptes actifs, contraintes de dates |
 | `0003_event_image_storage.sql`        | Bucket d’images et droits Storage                                                   |
+| `20260923150252_annual_events_description.sql` | Dates annuelles, descriptions formatées, vue publique des prochaines occurrences et contrôle de mise à la une |
 
 ### Cas A — Nouveau projet Supabase sans tables applicatives
 
@@ -142,6 +143,8 @@ La migration initiale insère des démonstrations : **une base neuve n’est pas
 ### Cas B — Base déjà suivie par le journal de ce projet
 
 Si les migrations précédentes figurent dans `drizzle.__drizzle_migrations` et correspondent aux fichiers du dépôt, utiliser également `npm run db:migrate`. Seules les migrations suivantes sont appliquées. Le journal Supabase CLI et le journal de ce script ne sont pas interchangeables.
+
+**Mise à jour du 23 septembre 2026 : appliquer la nouvelle migration avant de démarrer cette version du site.** Elle ajoute `annuel` (désactivé par défaut), `description_format` (texte brut par défaut) et la vue `event_occurrences`. Elle ne supprime ni ne réécrit les événements, descriptions, images ou slugs existants. Le catalogue utilise désormais cette vue : sans migration, il ne peut pas charger les événements.
 
 ### Cas C — Base historique Lovable sans journal applicatif
 
@@ -171,7 +174,10 @@ Si `0000` et `0001` sont déjà intégralement présents et `0002`/`0003` absent
 
 1. Exécuter le contenu de `0002_secure_identifier_accounts.sql` dans une transaction (`BEGIN;` avant, `COMMIT;` après).
 2. Après succès, faire de même avec `0003_event_image_storage.sql`.
-3. Vérifier les contraintes, les politiques et le bucket avant de convertir les comptes.
+3. Appliquer ensuite `20260923150252_annual_events_description.sql` dans une transaction.
+4. Vérifier les contraintes, les politiques et le bucket avant de convertir les comptes.
+
+**Si `0000` à `0003` sont déjà appliquées manuellement**, exécuter uniquement le contenu de `drizzle/migrations/20260923150252_annual_events_description.sql` dans l’éditeur SQL Supabase, encadré par `BEGIN;` et `COMMIT;`, après sauvegarde et vérification qu’il n’a pas déjà été appliqué. Ne pas relancer l’initialisation ni le nettoyage des démonstrations pour cette mise à jour. PostgreSQL 15 ou supérieur est requis pour la vue à droits de l’appelant ; elle conserve les restrictions RLS de la table des événements.
 
 Ne pas rejouer `0000` ou `0001` dans ce cas. Si `0001` manque réellement, l’appliquer avant `0002`, après vérification. Ne pas relancer aveuglément `0002` ou `0003` : leurs créations de contraintes/politiques ne sont pas toutes idempotentes.
 
@@ -231,11 +237,17 @@ Le bouton de copie affiche une coche et **Lien copié !** après réussite. En c
 
 Dans l’administration :
 
+- Les champs de date et d’heure disposent d’un bouton calendrier/horloge de 44 pixels, directement à côté du champ. Le sélecteur natif reste utilisé ; la saisie clavier reste possible.
+- La description propose **Gras**, **Italique** et **Souligné** : sélectionner du texte puis utiliser le bouton. Les balises `[b]`, `[i]`, `[u]` sont visibles dans le champ, avec un aperçu formaté en dessous. Le HTML arbitraire n’est pas exécuté. Les descriptions déjà enregistrées restent du texte brut jusqu’à l’utilisation du formatage.
+- Le bouton **Liste à puces** transforme les lignes sélectionnées (ou la ligne du curseur) en liste ; un second clic retire les puces. Les lignes commencent par `- ` dans le champ et deviennent une vraie liste dans l’aperçu et sur la fiche publique. Chaque élément peut contenir du gras, de l’italique et du soulignement. Aucune migration supplémentaire n’est nécessaire pour cet ajout.
+- L’action rapide **Mettre à la une** est disponible dans la liste pour un événement dont la date de fin n’est pas passée, jusqu’à la fin de cette journée (fuseau `Africa/Douala`). **Retirer de la une** reste disponible. Mettre à la une ne publie pas un brouillon et ne réactive pas un événement suspendu.
+- **Date fixe annuelle** répète un événement d’une seule journée, au même jour et au même mois. Indiquer sa première date : le site affiche ensuite automatiquement la prochaine occurrence, sans dupliquer l’événement ni changer son URL. Un 29 février revient uniquement les années bissextiles. Décocher cette option conserve la date de début enregistrée, pas la prochaine occurrence calculée.
+- Deux créations avec le même titre reçoivent des slugs distincts : par exemple `festival`, puis `festival-promoteur-b`, puis un suffixe numérique si nécessaire. La contrainte d’unicité protège aussi les créations simultanées. Les liens déjà enregistrés ne sont jamais renommés automatiquement ; une modification manuelle vers un slug occupé est refusée.
 - Le fichier choisi reste un aperçu local jusqu’au clic sur **Enregistrer**. Annuler ou choisir une autre image ne crée pas de fichier dans Storage.
 - L’enregistrement utilise les droits du compte connecté ; après réussite, la page revient à `/admin/evenements`, pour une création comme pour une modification.
 - La nouvelle image reçoit une URL distincte pour éviter le cache de l’ancienne. L’ancienne image du bucket `event-images` est supprimée via l’API Storage **après** l’enregistrement, seulement si aucun événement ne la référence encore. Les images externes sont conservées.
 - Un échec d’enregistrement conserve l’ancienne image ; le nouveau fichier est nettoyé s’il n’a pas été référencé. Un échec de nettoyage est signalé explicitement. Aucune purge rétroactive des anciens fichiers orphelins n’est effectuée.
-- La suppression est définitive sans sauvegarde Storage. Le contrôle des références et la suppression nécessitent `SUPABASE_SERVICE_ROLE_KEY` côté serveur uniquement. Les migrations existantes suffisent ; aucune nouvelle migration n’est nécessaire pour cette fonctionnalité.
+- La suppression est définitive sans sauvegarde Storage. Le contrôle des références et la suppression nécessitent `SUPABASE_SERVICE_ROLE_KEY` côté serveur uniquement et la migration Storage `0003`. Les nouvelles fonctions de dates annuelles et de description nécessitent aussi la migration du 23 septembre 2026 indiquée plus haut.
 
 Tests locaux sans modification des données réelles : `npm test` couvre le cycle de remplacement et les appels Supabase simulés. Pour les interactions visuelles, avec Google Chrome installé :
 
@@ -245,6 +257,9 @@ npm run dev -- --config tests/browser/vite.config.ts
 
 # Terminal 2 : clic, glissement, zoom, fermeture et retour de copie.
 node scripts/test-poster-browser.mjs
+
+# Dates et description : mobile, bureau et paysage.
+TEST_EDITOR=1 node scripts/test-poster-browser.mjs
 ```
 
 Le test vérifie les formats mobile, bureau et paysage, utilise un presse-papiers simulé et indique le dossier temporaire des captures. La recette finale d’enregistrement sur votre instance Supabase reste nécessaire.
@@ -405,6 +420,12 @@ La base et les images téléversées restent dans Supabase : ces commandes ne le
 5. Vérifier que canoniques, partage et sitemap ne contiennent plus `localhost` ni l’ancien domaine Lovable.
 
 Le code fournit du rendu serveur, des titres/descriptions, des canoniques, Open Graph, des données structurées `Event`, `/robots.txt` et un `/sitemap.xml` dynamique. Le sitemap exclut les démonstrations et événements non publiés ; administration et connexion sont marquées `noindex`. Ces directives SEO ne remplacent pas l’authentification.
+
+Les aperçus de partage Open Graph et Twitter/X sont présents dans le HTML initial, sans exécution de JavaScript : titre, description, URL canonique, image et texte alternatif. Les pages générales utilisent `public/social-card.png` (1200 × 630, source visuelle : `tests/browser/social-card.html`). Une fiche événement utilise son affiche, ou la carte générale si aucune image n’est renseignée. Les balises de formatage de la description sont retirées des métadonnées.
+
+Pour qu’un réseau puisse afficher ces cartes, le domaine et les images doivent être accessibles publiquement en HTTPS, sans connexion ni blocage des robots. Une adresse locale ou privée (`localhost`, `192.168.*`, `172.16.*` à `172.31.*`) n’est pas utilisable par leurs serveurs. Après changement du domaine, reconstruire le site ; après changement d’une affiche ou d’une description, demander une nouvelle exploration dans l’outil de diagnostic du réseau concerné si l’ancienne carte persiste. L’affichage et le recadrage finaux dépendent de chaque plateforme et de son cache.
+
+Après `npm run build`, le test `node scripts/test-social-ssr.mjs` vérifie les métadonnées du serveur de production avec des événements simulés, sans accès à votre base.
 
 Vérifier `/robots.txt` et `/sitemap.xml` sur le domaine HTTPS, puis soumettre le sitemap dans Google Search Console et Bing Webmaster Tools. Contrôler les titres, descriptions, dates, lieux, images et coordonnées réels. Ni l’indexation effective ni le classement ne sont garantis par le code.
 

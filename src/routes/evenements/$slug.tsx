@@ -26,6 +26,9 @@ import {
   type EventWithCategory,
 } from "@/lib/events";
 import { SITE } from "@/lib/site";
+import { socialMeta } from "@/lib/social-meta";
+import { plainDescription } from "@/lib/description";
+import { EventDescription } from "@/components/event-description";
 
 export const Route = createFileRoute("/evenements/$slug")({
   loader: async ({ params }) => {
@@ -38,7 +41,9 @@ export const Route = createFileRoute("/evenements/$slug")({
     const event = loaderData?.event;
     if (!event) return {};
     const title = `${event.titre} — HEMLÉ Events`;
-    const description = event.description.slice(0, 155);
+    const description = plainDescription(event.description, event.description_format)
+      .replace(/\s+/g, " ")
+      .slice(0, 155);
     const url = `${SITE.url}/evenements/${event.slug}`;
     const image = event.image_url ?? undefined;
     return {
@@ -46,17 +51,15 @@ export const Route = createFileRoute("/evenements/$slug")({
         ...(event.demo ? [{ name: "robots", content: "noindex, follow" }] : []),
         { title },
         { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "article" },
-        { property: "og:url", content: url },
-        { name: "twitter:card", content: "summary_large_image" },
-        ...(image
-          ? [
-              { property: "og:image", content: image },
-              { name: "twitter:image", content: image },
-            ]
-          : []),
+        ...socialMeta({
+          siteUrl: SITE.url,
+          title,
+          description,
+          path: `/evenements/${event.slug}`,
+          image: event.image_url,
+          imageAlt: event.image_alt || event.titre,
+          type: "article",
+        }),
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
@@ -66,7 +69,7 @@ export const Route = createFileRoute("/evenements/$slug")({
             "@context": "https://schema.org",
             "@type": "Event",
             name: event.titre,
-            description: event.description,
+            description: plainDescription(event.description, event.description_format),
             startDate: event.heure_debut
               ? `${event.date_debut}T${event.heure_debut}`
               : event.date_debut,
@@ -176,7 +179,7 @@ function EventDetail() {
             </Button>
 
             <div className="prose-none space-y-4 whitespace-pre-line text-base leading-relaxed text-foreground/90">
-              {event.description}
+              <EventDescription value={event.description} format={event.description_format} />
             </div>
 
             {event.organisateur ? (

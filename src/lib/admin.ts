@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole, EventStatus, EventWithCategory } from "@/lib/events";
+import { eventToday } from "@/lib/event-dates";
 
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
@@ -64,7 +65,7 @@ export async function fetchAdminEvent(id: string) {
 }
 
 export async function fetchAdminStats() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = eventToday();
   const counts: Record<string, number> = {};
   const statuses: EventStatus[] = ["brouillon", "programme", "publie", "suspendu", "archive"];
 
@@ -79,10 +80,10 @@ export async function fetchAdminStats() {
   );
 
   const { count: aVenir } = await supabase
-    .from("events")
+    .from("event_occurrences")
     .select("id", { count: "exact", head: true })
     .eq("statut", "publie")
-    .gte("date_fin_effective", today);
+    .gte("occurrence_end", today);
 
   return { counts, aVenir: aVenir ?? 0 };
 }
@@ -93,6 +94,17 @@ export async function setEventStatus(id: string, statut: EventStatus, publishedA
   if (statut === "programme") patch.published_at = publishedAt ?? null;
   const { error } = await supabase.from("events").update(patch).eq("id", id);
   if (error) throw error;
+}
+
+export async function setEventFeatured(id: string, featured: boolean) {
+  // The database trigger also enforces the date rule, for every write path.
+  const { error } = await supabase
+    .from("events")
+    .update({ mise_en_avant: featured })
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteEvent(id: string) {

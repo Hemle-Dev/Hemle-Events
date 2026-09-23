@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchCategoriesWithCounts, fetchHighlights } from "@/lib/events";
 import { SITE } from "@/lib/site";
+import { socialMeta } from "@/lib/social-meta";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,13 +22,13 @@ export const Route = createFileRoute("/")({
         content:
           "Découvrez les événements qui font vibrer l'Afrique et sa diaspora : festivals, conférences, salons, formations et rendez-vous communautaires.",
       },
-      { property: "og:title", content: "HEMLÉ Events — l'agenda de l'Afrique et de sa diaspora" },
-      {
-        property: "og:description",
-        content: "Recherchez, filtrez et découvrez les événements africains et diasporiques.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      ...socialMeta({
+        siteUrl: SITE.url,
+        title: "HEMLÉ Events — l'agenda de l'Afrique et de sa diaspora",
+        description:
+          "Découvrez les événements qui font vibrer l'Afrique et sa diaspora : festivals, conférences, salons, formations et rendez-vous communautaires.",
+        path: "/",
+      }),
     ],
   }),
   loader: async () => {

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SITE } from "@/lib/site";
+import { socialMeta } from "@/lib/social-meta";
 import {
   DATE_FILTERS,
   fetchCategories,
@@ -66,14 +67,13 @@ export const Route = createFileRoute("/evenements/")({
         content:
           "Recherchez et filtrez les événements d'Afrique et de la diaspora par date, pays, ville et catégorie.",
       },
-      { property: "og:title", content: "Tous les événements — HEMLÉ Events" },
-      {
-        property: "og:description",
-        content:
-          "L'agenda complet des événements africains et diasporiques, filtrable par date et lieu.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      ...socialMeta({
+        siteUrl: SITE.url,
+        title: "Tous les événements — HEMLÉ Events",
+        description:
+          "Recherchez et filtrez les événements d'Afrique et de la diaspora par date, pays, ville et catégorie.",
+        path: "/evenements",
+      }),
     ],
   }),
   loaderDeps: ({ search }) => search,

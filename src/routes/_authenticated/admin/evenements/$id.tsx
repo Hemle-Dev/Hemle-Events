@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimeInput } from "@/components/date-time-input";
+import { DescriptionEditor } from "@/components/description-editor";
+import { canFeatureEvent } from "@/lib/event-dates";
 import { fetchAdminEvent, fetchMyAccess, type EventInsert } from "@/lib/admin";
 import { saveEventWithImage } from "@/lib/event-save.functions";
 import { validateEventImage } from "@/lib/event-image";
@@ -25,6 +28,8 @@ export const Route = createFileRoute("/_authenticated/admin/evenements/$id")({
 });
 
 type FormState = {
+  annuel: boolean;
+  description_format: "plain" | "formatted";
   titre: string;
   slug: string;
   description: string;
@@ -50,6 +55,8 @@ type FormState = {
 };
 
 const EMPTY: FormState = {
+  annuel: false,
+  description_format: "plain",
   titre: "",
   slug: "",
   description: "",
@@ -113,6 +120,8 @@ function EventEditorForm({ id }: { id: string }) {
     if (!event) return;
     setSlugTouched(true);
     setForm({
+      annuel: event.annuel ?? false,
+      description_format: event.description_format ?? "plain",
       titre: event.titre,
       slug: event.slug,
       description: event.description ?? "",
@@ -145,6 +154,8 @@ function EventEditorForm({ id }: { id: string }) {
   const mutation = useMutation({
     mutationFn: async () => {
       const payload: EventInsert = {
+        annuel: form.annuel,
+        description_format: form.description_format,
         titre: form.titre.trim(),
         slug: (form.slug.trim() || slugify(form.titre)).trim(),
         description: form.description.trim(),
@@ -168,7 +179,13 @@ function EventEditorForm({ id }: { id: string }) {
           .map((word) => word.trim())
           .filter(Boolean),
         statut: form.statut,
-        mise_en_avant: form.mise_en_avant,
+        mise_en_avant:
+          form.mise_en_avant &&
+          canFeatureEvent({
+            date_debut: form.date_debut,
+            date_fin: form.date_fin || null,
+            annuel: form.annuel,
+          }),
         published_at:
           form.statut === "publie"
             ? (existing.data?.published_at ?? new Date().toISOString())
@@ -268,11 +285,16 @@ function EventEditorForm({ id }: { id: string }) {
             />
           </Field>
           <Field label="Description" required>
-            <Textarea
-              required
-              rows={8}
+            <DescriptionEditor
               value={form.description}
-              onChange={(e) => update("description", e.target.value)}
+              format={form.description_format}
+              onChange={(value, format) =>
+                setForm((previous) => ({
+                  ...previous,
+                  description: value,
+                  description_format: format,
+                }))
+              }
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -350,8 +372,9 @@ function EventEditorForm({ id }: { id: string }) {
           </Field>
           {form.statut === "programme" ? (
             <Field label="Date et heure de mise en ligne">
-              <Input
+              <DateTimeInput
                 type="datetime-local"
+                aria-label="la date et l’heure de publication"
                 required
                 value={form.published_at}
                 onChange={(e) => update("published_at", e.target.value)}
@@ -361,7 +384,23 @@ function EventEditorForm({ id }: { id: string }) {
           <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
             <span className="text-sm font-medium">Mettre à la une</span>
             <Switch
-              checked={form.mise_en_avant}
+              checked={
+                form.mise_en_avant &&
+                !!form.date_debut &&
+                canFeatureEvent({
+                  date_debut: form.date_debut,
+                  date_fin: form.date_fin || null,
+                  annuel: form.annuel,
+                })
+              }
+              disabled={
+                !form.date_debut ||
+                !canFeatureEvent({
+                  date_debut: form.date_debut,
+                  date_fin: form.date_fin || null,
+                  annuel: form.annuel,
+                })
+              }
               onCheckedChange={(checked) => update("mise_en_avant", checked)}
             />
           </div>
@@ -397,33 +436,58 @@ function EventEditorForm({ id }: { id: string }) {
 
         <section className="space-y-4 rounded-2xl border border-border bg-card p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-bold">Dates et lieu</h2>
-          <div className="grid gap-4 sm:grid-cols-4">
+          <label className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 text-sm">
+            <span>
+              Événement annuel à date fixe
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Chaque année au même jour et mois, sur une journée. Le 29 février revient les années
+                bissextiles.
+              </span>
+            </span>
+            <Switch
+              aria-label="Événement annuel à date fixe"
+              checked={form.annuel}
+              onCheckedChange={(annuel) =>
+                setForm((previous) => ({
+                  ...previous,
+                  annuel,
+                  date_fin: annuel ? "" : previous.date_fin,
+                }))
+              }
+            />
+          </label>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
             <Field label="Date de début" required>
-              <Input
+              <DateTimeInput
                 type="date"
+                aria-label="la date de début"
                 required
                 value={form.date_debut}
                 onChange={(e) => update("date_debut", e.target.value)}
               />
             </Field>
             <Field label="Heure de début">
-              <Input
+              <DateTimeInput
                 type="time"
+                aria-label="l’heure de début"
                 value={form.heure_debut}
                 onChange={(e) => update("heure_debut", e.target.value)}
               />
             </Field>
             <Field label="Date de fin">
-              <Input
+              <DateTimeInput
                 type="date"
+                aria-label="la date de fin"
+                disabled={form.annuel}
                 min={form.date_debut || undefined}
                 value={form.date_fin}
                 onChange={(e) => update("date_fin", e.target.value)}
               />
             </Field>
             <Field label="Heure de fin">
-              <Input
+              <DateTimeInput
                 type="time"
+                aria-label="l’heure de fin"
                 value={form.heure_fin}
                 onChange={(e) => update("heure_fin", e.target.value)}
               />
@@ -491,7 +555,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <Label>
         {label}
         {required ? <span className="text-destructive"> *</span> : null}

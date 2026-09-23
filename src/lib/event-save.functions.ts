@@ -13,6 +13,8 @@ const eventValues = z.object({
   titre: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().min(1),
+  description_format: z.enum(["plain", "formatted"]).default("plain"),
+  annuel: z.boolean().default(false),
   category_id: z.string().uuid().nullable(),
   image_url: optionalUrl,
   image_alt: optionalText,
@@ -40,6 +42,9 @@ export const saveEventWithImage = createServerFn({ method: "POST" })
     if (!(input instanceof FormData)) throw new Error("Formulaire invalide.");
     const id = z.string().uuid().nullable().parse(input.get("id"));
     const values = eventValues.parse(JSON.parse(String(input.get("values"))));
+    if (values.annuel && values.date_fin && values.date_fin !== values.date_debut) {
+      throw new Error("Un événement annuel à date fixe doit se dérouler sur une seule journée.");
+    }
     const file = input.get("image");
     if (file !== null && !(file instanceof File)) throw new Error("Image invalide.");
     if (file) validateEventImage(file);

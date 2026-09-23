@@ -4,6 +4,7 @@ import { PublicLayout } from "@/components/public-layout";
 import { AddEventButton } from "@/components/site-header";
 import { SocialLinks } from "@/components/social-links";
 import { SITE } from "@/lib/site";
+import { socialMeta } from "@/lib/social-meta";
 
 export const Route = createFileRoute("/a-propos")({
   head: () => ({
@@ -15,13 +16,13 @@ export const Route = createFileRoute("/a-propos")({
         content:
           "HEMLÉ Events est l'agenda événementiel porté par HEMLÉ Magazine, dédié à l'Afrique, ses diasporas et ses nations.",
       },
-      { property: "og:title", content: "À propos de HEMLÉ — HEMLÉ Events" },
-      {
-        property: "og:description",
-        content: "L'agenda événementiel porté par HEMLÉ Magazine : Afrique, diasporas, nations.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      ...socialMeta({
+        siteUrl: SITE.url,
+        title: "À propos de HEMLÉ — HEMLÉ Events",
+        description:
+          "HEMLÉ Events est l'agenda événementiel porté par HEMLÉ Magazine, dédié à l'Afrique, ses diasporas et ses nations.",
+        path: "/a-propos",
+      }),
     ],
   }),
   component: APropos,

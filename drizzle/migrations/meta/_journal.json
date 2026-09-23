@@ -29,6 +29,13 @@
       "when": 1789911569526,
       "tag": "0003_event_image_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790175772000,
+      "tag": "20260923150252_annual_events_description",
+      "breakpoints": true
     }
   ]
 }

@@ -107,6 +107,73 @@ try {
     await command("Emulation.setEmulatedMedia", {
       features: [{ name: "prefers-reduced-motion", value: "reduce" }],
     });
+    if (process.env.TEST_EDITOR === "1") {
+      await command("Page.navigate", { url: `${base}/tests/browser/editor.html` });
+      await waitFor("document.querySelectorAll('button[aria-label^=Choisir]').length === 4");
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true);
+      await evaluate(
+        "window.__picked=[]; HTMLInputElement.prototype.showPicker = function() { window.__picked.push(this.type); }",
+      );
+      for (const label of [
+        "Choisir la date de début",
+        "Choisir la date de fin",
+        "Choisir l’heure de début",
+        "Choisir la publication",
+      ]) {
+        const selector = `button[aria-label="${label}"]`;
+        assert.equal(
+          await evaluate(
+            `(() => { const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return r.width >= 44 && r.x >= 0 && r.right <= innerWidth; })()`,
+          ),
+          true,
+        );
+        await click(selector);
+      }
+      assert.deepEqual(await evaluate("window.__picked"), [
+        "date",
+        "date",
+        "time",
+        "datetime-local",
+      ]);
+      for (const [index, tag] of [
+        [0, "strong"],
+        [1, "em"],
+        [2, "u"],
+      ]) {
+        await evaluate(
+          "(() => { const t=document.querySelector('textarea'); t.focus(); t.setSelectionRange(0, t.value.length); })()",
+        );
+        await click(`[role=group] button:nth-child(${index + 1})`);
+        await waitFor(`!!document.querySelector('details ${tag}')`);
+      }
+      await evaluate(
+        "(() => { const t=document.querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(t, 'Concert\\nRencontre'); t.dispatchEvent(new Event('input',{bubbles:true})); })()",
+      );
+      await waitFor("document.querySelector('textarea').value === 'Concert\\nRencontre'");
+      await evaluate(
+        "(() => { const t=document.querySelector('textarea'); t.focus(); t.select(); })()",
+      );
+      await click("[role=group] button:nth-child(4)");
+      await waitFor("document.querySelectorAll('details ul li').length === 2");
+      assert.equal(
+        await evaluate("getComputedStyle(document.querySelector('details ul')).listStyleType"),
+        "disc",
+      );
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true);
+      await click("[role=group] button:nth-child(1)");
+      await waitFor("document.querySelectorAll('details li strong').length === 2");
+      await click("[role=group] button:nth-child(4)");
+      await waitFor("document.querySelectorAll('details ul').length === 0");
+      await evaluate(
+        "(() => { const t=document.querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(t, '- <img src=x onerror=alert(1)>'); t.dispatchEvent(new Event('input',{bubbles:true})); })()",
+      );
+      await waitFor("document.querySelector('details').textContent.includes('<img src=x')");
+      assert.equal(await evaluate("document.querySelectorAll('details img').length"), 0);
+      console.log(
+        `PASS editor ${width}×${height}: date buttons, formatting, bullet lists, safe preview`,
+      );
+      continue;
+    }
     await command("Page.navigate", { url: `${base}/tests/browser/poster.html` });
     await waitFor("!!document.querySelector('button[aria-haspopup=\"dialog\"]')");
     await waitFor("document.querySelector('button[aria-haspopup=\"dialog\"] img').complete");

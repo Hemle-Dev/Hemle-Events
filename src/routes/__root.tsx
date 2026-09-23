@@ -11,6 +11,7 @@ import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { SITE } from "@/lib/site";
+import { socialMeta } from "@/lib/social-meta";
 
 function NotFoundComponent() {
   return (
@@ -76,16 +77,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "HEMLÉ Events" },
       { name: "description", content: "L’agenda des événements d’Afrique et de ses diasporas." },
       { name: "author", content: "HEMLÉ Magazine" },
-      { property: "og:title", content: "HEMLÉ Events" },
-      {
-        property: "og:description",
-        content: "L’agenda des événements d’Afrique et de ses diasporas.",
-      },
-      { property: "og:type", content: "website" },
-      { property: "og:locale", content: "fr_FR" },
-      { property: "og:site_name", content: SITE.name },
-      { property: "og:image", content: `${SITE.url}/hero.jpg` },
-      { name: "twitter:card", content: "summary_large_image" },
+      ...socialMeta({
+        siteUrl: SITE.url,
+        title: "HEMLÉ Events",
+        description: "L’agenda des événements d’Afrique et de ses diasporas.",
+        path: "/",
+      }),
     ],
     links: [
       {

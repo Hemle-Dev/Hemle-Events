@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "../integrations/supabase/client.server.ts";
 import { EVENT_IMAGE_BUCKET, removeUnusedEventImage, saveWithEventImage } from "./event-image.ts";
+import { eventSlugCandidate } from "./event-slug.ts";
 
 type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 
@@ -68,16 +69,33 @@ export async function persistEventWithImage(
       : {}),
     save: async (imageUrl) => {
       const payload = { ...values, image_url: imageUrl };
-      const query = id
-        ? client.from("events").update(payload).eq("id", id).eq("updated_at", previous!.updated_at)
-        : client.from("events").insert(payload);
-      const { data, error } = await query.select("id").single();
-      if (error)
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const query = id
+          ? client
+              .from("events")
+              .update(payload)
+              .eq("id", id)
+              .eq("updated_at", previous!.updated_at)
+          : client.from("events").insert({
+              ...payload,
+              slug: eventSlugCandidate(values.slug, values.organisateur, attempt),
+            });
+        const { data, error } = await query.select("id").single();
+        if (!error) return data.id;
+        if (error.code === "23505" && /slug/i.test(`${error.message} ${error.details}`)) {
+          if (!id) continue; // Unique constraint arbitrates even concurrent creations.
+          throw new Error(
+            "Cette URL est déjà utilisée. Choisissez un identifiant d’URL différent ; l’événement existant n’a pas été modifié.",
+          );
+        }
         throw new Error(
           "Enregistrement impossible ou événement modifié entre-temps. Rechargez la fiche et réessayez.",
           { cause: error },
         );
-      return data.id;
+      }
+      throw new Error(
+        "Impossible de réserver une URL unique. Précisez un autre identifiant d’URL.",
+      );
     },
     // The client never supplies an arbitrary deletion target: only the previous
     // persisted URL or the object uploaded by this invocation reaches cleanup.

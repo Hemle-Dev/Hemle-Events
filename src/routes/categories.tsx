@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { PublicLayout } from "@/components/public-layout";
 import { fetchCategoriesWithCounts } from "@/lib/events";
 import { SITE } from "@/lib/site";
+import { socialMeta } from "@/lib/social-meta";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -15,13 +16,13 @@ export const Route = createFileRoute("/categories")({
         content:
           "Culture, business, festivals, formations, sport, mode : explorez l'agenda HEMLÉ Events par catégorie.",
       },
-      { property: "og:title", content: "Catégories d'événements — HEMLÉ Events" },
-      {
-        property: "og:description",
-        content: "Explorez les événements d'Afrique et de la diaspora par catégorie.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      ...socialMeta({
+        siteUrl: SITE.url,
+        title: "Catégories d'événements — HEMLÉ Events",
+        description:
+          "Culture, business, festivals, formations, sport, mode : explorez l'agenda HEMLÉ Events par catégorie.",
+        path: "/categories",
+      }),
     ],
   }),
   loader: () => fetchCategoriesWithCounts(),
