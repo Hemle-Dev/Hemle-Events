@@ -2,6 +2,8 @@
 process.env.SUPABASE_URL = "https://supabase.example.test";
 process.env.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
 const event = {
+  audience: "diaspora",
+  mots_cles: [],
   id: "00000000-0000-0000-0000-000000000001",
   titre: "Festival test SSR",
   slug: "festival-test-ssr",

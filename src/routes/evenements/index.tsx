@@ -20,6 +20,12 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { SITE } from "@/lib/site";
 import { socialMeta } from "@/lib/social-meta";
 import {
+  EVENT_AUDIENCES,
+  eventAudience,
+  audienceLabel,
+  type EventAudience,
+} from "@/lib/event-audience";
+import {
   DATE_FILTERS,
   fetchCategories,
   fetchFilterOptions,
@@ -28,6 +34,7 @@ import {
 } from "@/lib/events";
 
 type EventSearch = {
+  audience?: EventAudience | undefined;
   q?: string | undefined;
   date?: DateFilter | undefined;
   pays?: string | undefined;
@@ -41,6 +48,7 @@ const DATE_VALUES = DATE_FILTERS.map((d) => d.value) as readonly string[];
 
 export const Route = createFileRoute("/evenements/")({
   validateSearch: (search: Record<string, unknown>): EventSearch => ({
+    audience: eventAudience(search["audience"]),
     q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
     date:
       typeof search["date"] === "string" && DATE_VALUES.includes(search["date"])
@@ -80,7 +88,7 @@ export const Route = createFileRoute("/evenements/")({
   loader: async ({ deps }) => ({
     events: await fetchPublicEvents({ ...deps, perPage: PER_PAGE }),
     categories: await fetchCategories(),
-    options: await fetchFilterOptions(),
+    options: await fetchFilterOptions(deps.audience),
   }),
   component: Catalogue,
 });
@@ -104,6 +112,7 @@ function Catalogue() {
   });
 
   const activeTags = [
+    search.audience ? { key: "audience", label: audienceLabel(search.audience)! } : null,
     search.date
       ? { key: "date", label: DATE_FILTERS.find((d) => d.value === search.date)?.label ?? "" }
       : null,
@@ -233,7 +242,34 @@ function Catalogue() {
       <div className="border-b border-border bg-muted/40">
         <div className="container-page py-12">
           <p className="eyebrow">Agenda</p>
-          <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Tous les événements</h1>
+          <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
+            {search.audience
+              ? `Événements — ${audienceLabel(search.audience)}`
+              : "Tous les événements"}
+          </h1>
+          <div className="mt-6 flex flex-wrap gap-3" role="group" aria-label="Classement éditorial">
+            <Button
+              type="button"
+              variant={!search.audience ? "default" : "outline"}
+              aria-pressed={!search.audience}
+              onClick={() => setSearch({ audience: undefined })}
+            >
+              Tous
+            </Button>
+            {EVENT_AUDIENCES.map((item) => (
+              <Button
+                type="button"
+                key={item.value}
+                variant={search.audience === item.value ? "default" : "outline"}
+                aria-pressed={search.audience === item.value}
+                onClick={() =>
+                  setSearch({ audience: item.value, pays: undefined, ville: undefined })
+                }
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
           <form
             role="search"
             className="mt-6 flex flex-col gap-3 sm:flex-row"

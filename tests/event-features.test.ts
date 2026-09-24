@@ -61,7 +61,10 @@ test("social previews supply full OG and Twitter data with absolute image URLs",
   const get = (key: string) =>
     entries.find((entry) => entry.property === key || entry.name === key)?.content;
   assert.equal(get("og:url"), "https://events.example.test/evenements/festival");
-  assert.equal(get("og:image"), "https://events.example.test/social-card.png");
+  assert.equal(get("og:image"), "https://events.example.test/social-card.jpg");
+  assert.equal(get("og:image:type"), "image/jpeg");
+  assert.equal(get("og:image:width"), "1280");
+  assert.equal(get("og:image:secure_url"), get("og:image"));
   assert.equal(get("twitter:title"), "Festival");
   assert.equal(get("twitter:image"), get("og:image"));
   assert.ok(get("og:image:alt"));

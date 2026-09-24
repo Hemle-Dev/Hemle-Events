@@ -36,6 +36,13 @@
       "when": 1790175772000,
       "tag": "20260923150252_annual_events_description",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790251947000,
+      "tag": "20260924121227_editorial_event_audience",
+      "breakpoints": true
     }
   ]
 }

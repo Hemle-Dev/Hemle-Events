@@ -53,16 +53,24 @@ try {
       assert.match(meta(html, "og:title"), /Festival test SSR/);
       assert.equal(meta(html, "og:description"), "Bienvenue au festival annuel.");
       assert.match(html, /2030-12-25T18:00:00/);
-    } else assert.match(meta(html, "og:image"), /\/social-card.png$/);
+      assert.ok(
+        !html.includes('property="og:image:width"'),
+        "Event poster must not inherit default card dimensions",
+      );
+    } else {
+      assert.match(meta(html, "og:image"), /\/social-card.jpg$/);
+      assert.equal(meta(html, "og:image:type"), "image/jpeg");
+      assert.equal(meta(html, "og:image:width"), "1280");
+      assert.equal(meta(html, "og:image:height"), "672");
+    }
     console.log(`PASS SSR social preview ${path}`);
   }
-  const image = await fetch(`${origin}/social-card.png`);
+  const image = await fetch(`${origin}/social-card.jpg`);
   assert.equal(image.status, 200);
   const bytes = Buffer.from(await image.arrayBuffer());
-  assert.equal(bytes.subarray(1, 4).toString(), "PNG");
-  assert.equal(bytes.readUInt32BE(16), 1200);
-  assert.equal(bytes.readUInt32BE(20), 630);
-  console.log("PASS public social image 1200 × 630");
+  assert.match(image.headers.get("content-type"), /image\/jpeg/);
+  assert.equal(bytes.subarray(0, 3).toString("hex"), "ffd8ff");
+  console.log("PASS public social image: JPEG signature and MIME agree");
 } finally {
   if (child.exitCode === null) {
     child.kill("SIGTERM");

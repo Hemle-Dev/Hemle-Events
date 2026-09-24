@@ -3,6 +3,8 @@ import { ArrowRight, Search } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState, EventGrid } from "@/components/event-card";
+import { FeaturedCarousel } from "@/components/featured-carousel";
+import { EVENT_AUDIENCES, eventAudience, type EventAudience } from "@/lib/event-audience";
 import { PublicLayout, SectionHeading } from "@/components/public-layout";
 import { AddEventButton } from "@/components/site-header";
 import { SocialLinks } from "@/components/social-links";
@@ -13,6 +15,9 @@ import { SITE } from "@/lib/site";
 import { socialMeta } from "@/lib/social-meta";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { audience?: EventAudience | undefined } => ({
+    audience: eventAudience(search["audience"]),
+  }),
   head: () => ({
     links: [{ rel: "canonical", href: `${SITE.url}/` }],
     meta: [
@@ -31,10 +36,11 @@ export const Route = createFileRoute("/")({
       }),
     ],
   }),
-  loader: async () => {
+  loaderDeps: ({ search }) => ({ audience: search.audience }),
+  loader: async ({ deps }) => {
     const [highlights, categories] = await Promise.all([
-      fetchHighlights(),
-      fetchCategoriesWithCounts(),
+      fetchHighlights(deps.audience),
+      fetchCategoriesWithCounts(deps.audience),
     ]);
     return { ...highlights, categories };
   },
@@ -42,6 +48,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HeroSearch() {
+  const { audience } = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
 
@@ -50,7 +57,7 @@ function HeroSearch() {
       className="mx-auto mt-8 flex w-full max-w-xl flex-col gap-3 sm:flex-row"
       onSubmit={(e) => {
         e.preventDefault();
-        void navigate({ to: "/evenements", search: q.trim() ? { q: q.trim() } : {} });
+        void navigate({ to: "/evenements", search: { q: q.trim() || undefined, audience } });
       }}
       role="search"
     >
@@ -78,6 +85,7 @@ function HeroSearch() {
 }
 
 function Home() {
+  const { audience } = Route.useSearch();
   const { aLaUne, ceWeekEnd, prochains, categories } = Route.useLoaderData();
 
   return (
@@ -116,6 +124,31 @@ function Home() {
       </section>
 
       <div className="container-page py-16 sm:py-20">
+        <nav
+          className="mb-10 flex flex-wrap gap-3"
+          aria-label="Classement éditorial des événements"
+        >
+          <Button asChild variant={!audience ? "default" : "outline"}>
+            <Link to="/" search={{}} aria-current={!audience ? "page" : undefined}>
+              Tous les événements
+            </Link>
+          </Button>
+          {EVENT_AUDIENCES.map((item) => (
+            <Button
+              key={item.value}
+              asChild
+              variant={audience === item.value ? "default" : "outline"}
+            >
+              <Link
+                to="/"
+                search={{ audience: item.value }}
+                aria-current={audience === item.value ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            </Button>
+          ))}
+        </nav>
         <section aria-labelledby="a-la-une">
           <SectionHeading
             eyebrow="À la une"
@@ -124,7 +157,7 @@ function Home() {
           />
           <div id="a-la-une" />
           {aLaUne.length ? (
-            <EventGrid events={aLaUne} />
+            <FeaturedCarousel key={audience ?? "tous"} events={aLaUne} />
           ) : (
             <EmptyState
               title="Aucune mise en avant pour le moment."
@@ -140,7 +173,7 @@ function Home() {
               title="Ce qui se passe ce week-end"
               action={
                 <Button asChild variant="ghost">
-                  <Link to="/evenements" search={{ date: "week-end" }}>
+                  <Link to="/evenements" search={{ date: "week-end", audience }}>
                     Tout voir <ArrowRight aria-hidden="true" />
                   </Link>
                 </Button>
@@ -157,7 +190,7 @@ function Home() {
             title="Prochains événements"
             action={
               <Button asChild variant="ghost">
-                <Link to="/evenements">
+                <Link to="/evenements" search={{ audience }}>
                   Tous les événements <ArrowRight aria-hidden="true" />
                 </Link>
               </Button>
@@ -175,7 +208,7 @@ function Home() {
               <Link
                 key={cat.id}
                 to="/evenements"
-                search={{ categorie: cat.slug }}
+                search={{ categorie: cat.slug, audience }}
                 className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
               >
                 {cat.nom}

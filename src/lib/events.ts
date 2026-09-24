@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { eventToday, nextAnnualDate } from "@/lib/event-dates";
+import type { EventAudience } from "@/lib/event-audience";
 
 export type EventRow = Database["public"]["Tables"]["events"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -91,6 +92,7 @@ export function dateRangeFor(filter: DateFilter): { start: string; end?: string 
 }
 
 export type EventFilters = {
+  audience?: EventAudience | undefined;
   q?: string | undefined;
   date?: DateFilter | undefined;
   pays?: string | undefined;
@@ -116,6 +118,7 @@ export async function fetchPublicEvents(filters: EventFilters = {}) {
   const perPage = filters.perPage ?? 12;
   const page = filters.page ?? 1;
   let query = publicEventsQuery();
+  if (filters.audience) query = query.eq("audience", filters.audience);
 
   const range = dateRangeFor(filters.date ?? "prochainement");
   query = query.gte("occurrence_end", range.start);
@@ -159,19 +162,22 @@ export async function fetchPublicEvents(filters: EventFilters = {}) {
   };
 }
 
-export async function fetchHighlights() {
+export async function fetchHighlights(audience?: EventAudience) {
   const today = eventToday();
-  const base = () =>
-    supabase
+  const base = () => {
+    let query = supabase
       .from("event_occurrences")
       .select(SELECT_WITH_CATEGORY)
       .or(publicStatusFilter())
       .gte("occurrence_end", today);
+    if (audience) query = query.eq("audience", audience);
+    return query;
+  };
 
   const weekend = dateRangeFor("week-end");
 
   const [aLaUne, ceWeekEnd, prochains] = await Promise.all([
-    base().eq("mise_en_avant", true).order("occurrence_start").limit(3),
+    base().eq("mise_en_avant", true).order("occurrence_start").order("id").limit(12),
     base()
       .gte("occurrence_end", weekend.start)
       .lte("occurrence_start", weekend.end!)
@@ -179,6 +185,9 @@ export async function fetchHighlights() {
       .limit(3),
     base().order("occurrence_start").limit(6),
   ]);
+  for (const result of [aLaUne, ceWeekEnd, prochains]) {
+    if (result.error) throw result.error;
+  }
 
   return {
     aLaUne: ((aLaUne.data ?? []) as EventWithCategory[]).map(projectOccurrence),
@@ -193,16 +202,16 @@ export async function fetchCategories() {
   return data ?? [];
 }
 
-export async function fetchCategoriesWithCounts() {
+export async function fetchCategoriesWithCounts(audience?: EventAudience) {
   const today = eventToday();
-  const [cats, events] = await Promise.all([
-    fetchCategories(),
-    supabase
-      .from("event_occurrences")
-      .select("category_id")
-      .or(publicStatusFilter())
-      .gte("occurrence_end", today),
-  ]);
+  let query = supabase
+    .from("event_occurrences")
+    .select("category_id")
+    .or(publicStatusFilter())
+    .gte("occurrence_end", today);
+  if (audience) query = query.eq("audience", audience);
+  const [cats, events] = await Promise.all([fetchCategories(), query]);
+  if (events.error) throw events.error;
   const counts = new Map<string, number>();
   for (const row of events.data ?? []) {
     if (row.category_id) counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
@@ -231,17 +240,21 @@ export async function fetchSimilarEvents(event: EventWithCategory) {
     .order("occurrence_start")
     .limit(3);
   if (event.category_id) query = query.eq("category_id", event.category_id);
+  if (event.audience) query = query.eq("audience", event.audience);
   const { data } = await query;
   return ((data ?? []) as EventWithCategory[]).map(projectOccurrence);
 }
 
-export async function fetchFilterOptions() {
+export async function fetchFilterOptions(audience?: EventAudience) {
   const today = eventToday();
-  const { data } = await supabase
+  let query = supabase
     .from("event_occurrences")
     .select("pays, ville, type_evenement")
     .or(publicStatusFilter())
     .gte("occurrence_end", today);
+  if (audience) query = query.eq("audience", audience);
+  const { data, error } = await query;
+  if (error) throw error;
   const pays = [...new Set((data ?? []).map((d) => d.pays).filter(Boolean))].sort();
   const villes = [...new Set((data ?? []).map((d) => d.ville).filter(Boolean))].sort();
   const types = [

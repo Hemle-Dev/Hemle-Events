@@ -29,6 +29,7 @@ import { SITE } from "@/lib/site";
 import { socialMeta } from "@/lib/social-meta";
 import { plainDescription } from "@/lib/description";
 import { EventDescription } from "@/components/event-description";
+import { audienceLabel } from "@/lib/event-audience";
 
 export const Route = createFileRoute("/evenements/$slug")({
   loader: async ({ params }) => {
@@ -164,6 +165,11 @@ function EventDetail() {
         >
           {event.categories ? (
             <Badge className="bg-primary text-primary-foreground">{event.categories.nom}</Badge>
+          ) : null}
+          {event.audience ? (
+            <Badge variant="secondary" className="ml-2">
+              {audienceLabel(event.audience)}
+            </Badge>
           ) : null}
           <h1 className="mt-3 max-w-3xl text-balance-tight font-display text-3xl font-bold text-white sm:text-5xl">
             {event.titre}

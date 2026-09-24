@@ -82,6 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         title: "HEMLÉ Events",
         description: "L’agenda des événements d’Afrique et de ses diasporas.",
         path: "/",
+        imageDetails: false, // Child routes provide dimensions only for their own image.
       }),
     ],
     links: [

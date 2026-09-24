@@ -10,6 +10,7 @@ const optionalUrl = z
   .regex(/^https?:\/\//)
   .nullable();
 const eventValues = z.object({
+  audience: z.enum(["afrique", "diaspora"], { required_error: "Choisissez Afrique ou Diaspora." }),
   titre: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().min(1),

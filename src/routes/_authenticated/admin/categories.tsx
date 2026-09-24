@@ -31,7 +31,7 @@ function AdminCategories() {
   const [form, setForm] = useState<CategoryForm>(EMPTY);
   const categories = useQuery({
     queryKey: ["admin", "categories", "counts"],
-    queryFn: fetchCategoriesWithCounts,
+    queryFn: () => fetchCategoriesWithCounts(),
   });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin"] });

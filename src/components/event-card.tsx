@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CalendarDays, MapPin } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { audienceLabel } from "@/lib/event-audience";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatEventDates, formatShortDay, type EventWithCategory } from "@/lib/events";
 
@@ -35,6 +36,7 @@ export function EventCard({ event }: { event: EventWithCategory }) {
       </div>
 
       <div className="space-y-3 p-5">
+        {event.audience ? <Badge variant="secondary">{audienceLabel(event.audience)}</Badge> : null}
         <h3 className="text-balance-tight font-display text-lg font-semibold leading-snug">
           <Link
             to="/evenements/$slug"

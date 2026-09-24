@@ -28,6 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin/evenements/$id")({
 });
 
 type FormState = {
+  audience: "afrique" | "diaspora" | "";
   annuel: boolean;
   description_format: "plain" | "formatted";
   titre: string;
@@ -55,6 +56,7 @@ type FormState = {
 };
 
 const EMPTY: FormState = {
+  audience: "",
   annuel: false,
   description_format: "plain",
   titre: "",
@@ -120,6 +122,7 @@ function EventEditorForm({ id }: { id: string }) {
     if (!event) return;
     setSlugTouched(true);
     setForm({
+      audience: event.audience ?? "",
       annuel: event.annuel ?? false,
       description_format: event.description_format ?? "plain",
       titre: event.titre,
@@ -153,7 +156,10 @@ function EventEditorForm({ id }: { id: string }) {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!form.audience)
+        throw new Error("Choisissez le classement éditorial : Afrique ou Diaspora.");
       const payload: EventInsert = {
+        audience: form.audience,
         annuel: form.annuel,
         description_format: form.description_format,
         titre: form.titre.trim(),
@@ -436,6 +442,23 @@ function EventEditorForm({ id }: { id: string }) {
 
         <section className="space-y-4 rounded-2xl border border-border bg-card p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-bold">Dates et lieu</h2>
+          <Field label="Classement éditorial" required>
+            <Select
+              value={form.audience}
+              onValueChange={(value) => update("audience", value as "afrique" | "diaspora")}
+            >
+              <SelectTrigger aria-label="Classement éditorial" aria-required="true">
+                <SelectValue placeholder="Choisir Afrique ou Diaspora" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="afrique">Afrique</SelectItem>
+                <SelectItem value="diaspora">Diaspora</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Choix de la rédaction, indépendant du pays où se déroule l’événement.
+            </p>
+          </Field>
           <label className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 text-sm">
             <span>
               Événement annuel à date fixe

@@ -10,6 +10,7 @@ Le site ne dépend plus du runtime ni de l’hébergement d’images Lovable. **
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Migrations](#migrations)
+- [Classement éditorial et carrousel](#classement-éditorial-et-carrousel)
 - [Comptes et administrateur](#comptes-et-administrateur)
 - [Nettoyage des données factices](#nettoyage-des-données-factices)
 - [Exécution locale et tests](#exécution-locale-et-tests)
@@ -127,6 +128,7 @@ Les SQL de référence sont dans `drizzle/migrations/`. Le nom du dossier est hi
 | `0002_secure_identifier_accounts.sql` | Identifiants normalisés et uniques, droits des comptes actifs, contraintes de dates |
 | `0003_event_image_storage.sql`        | Bucket d’images et droits Storage                                                   |
 | `20260923150252_annual_events_description.sql` | Dates annuelles, descriptions formatées, vue publique des prochaines occurrences et contrôle de mise à la une |
+| `20260924121227_editorial_event_audience.sql` | Classement éditorial Afrique/Diaspora, événements existants conservés « À classer » |
 
 ### Cas A — Nouveau projet Supabase sans tables applicatives
 
@@ -186,6 +188,20 @@ Ne pas rejouer `0000` ou `0001` dans ce cas. Si `0001` manque réellement, l’a
 La procédure manuelle ne renseigne pas le journal du script. Conserver une trace des SQL appliqués et gérer explicitement les futures migrations tant qu’une reprise contrôlée du journal n’a pas été réalisée.
 
 **Lancer les migrations depuis le dépôt sur l’hôte, pas dans l’image finale actuelle** : elle n’embarque ni les SQL ni le pilote PostgreSQL de développement. `docker compose up` n’exécute aucune migration.
+
+## Classement éditorial et carrousel
+
+### Mise à jour du 24 septembre 2026 — Afrique / Diaspora
+
+Avant de déployer cette version, sauvegarder puis appliquer `20260924121227_editorial_event_audience.sql`, après la migration du 23 septembre. Pour une base suivie par le journal du dépôt, `npm run db:migrate` applique uniquement les migrations manquantes. Pour une base gérée manuellement, exécuter uniquement le nouveau SQL dans une transaction, sans rejouer les anciennes migrations ni lancer le nettoyage.
+
+Le champ `audience` est un **classement éditorial indépendant du lieu**. Les événements existants restent inchangés et non classés (`NULL`) : ils restent visibles dans « Tous », mais n’apparaissent dans « Afrique » ou « Diaspora » qu’après classement. Dans **Administration → Événements → À classer**, choisir Afrique ou Diaspora directement sur chaque ligne. Ce choix est requis lors de l’enregistrement depuis le formulaire. Aucune attribution automatique selon le pays n’est effectuée.
+
+Les filtres sont partageables via `?audience=afrique` et `?audience=diaspora` sur l’accueil et le catalogue. Ils s’appliquent avant pagination et sélection des événements à la une. Un badge identifie le classement sur les cartes et fiches ; les suggestions respectent le même classement.
+
+La section « À la une » présente les **12 premiers événements éligibles**, triés par date de début croissante (puis identifiant pour stabiliser les égalités). Le carrousel affiche 3 cartes par vue sur ordinateur (4 pages maximum), 2 sur tablette et 1 sur mobile. Navigation par flèches, clavier et glissement tactile ; aucun défilement automatique. Les commandes disparaissent si tout tient dans une seule vue. Les événements suivants restent dans le catalogue.
+
+Test isolé : démarrer `npm run dev -- --config tests/browser/vite.config.ts`, puis `TEST_CAROUSEL=1 node scripts/test-poster-browser.mjs`. Aucun événement réel n’est utilisé ou modifié.
 
 ## Comptes et administrateur
 
@@ -421,11 +437,22 @@ La base et les images téléversées restent dans Supabase : ces commandes ne le
 
 Le code fournit du rendu serveur, des titres/descriptions, des canoniques, Open Graph, des données structurées `Event`, `/robots.txt` et un `/sitemap.xml` dynamique. Le sitemap exclut les démonstrations et événements non publiés ; administration et connexion sont marquées `noindex`. Ces directives SEO ne remplacent pas l’authentification.
 
-Les aperçus de partage Open Graph et Twitter/X sont présents dans le HTML initial, sans exécution de JavaScript : titre, description, URL canonique, image et texte alternatif. Les pages générales utilisent `public/social-card.png` (1200 × 630, source visuelle : `tests/browser/social-card.html`). Une fiche événement utilise son affiche, ou la carte générale si aucune image n’est renseignée. Les balises de formatage de la description sont retirées des métadonnées.
+Les aperçus de partage Open Graph et Twitter/X sont présents dans le HTML initial, sans exécution de JavaScript : titre, description, URL canonique, image et texte alternatif. Les pages générales utilisent `public/social-card.jpg` (JPEG 1280 × 672), avec type MIME et dimensions explicites. Le visuel fourni a été conservé sans réencodage ; l’ancien fichier nommé `social-card.png` n’est plus référencé par les métadonnées. Une fiche événement utilise son affiche, ou la carte générale si aucune image n’est renseignée. Les dimensions de la carte générale ne sont pas héritées par les affiches d’événements. Les balises de formatage de la description sont retirées des métadonnées.
 
 Pour qu’un réseau puisse afficher ces cartes, le domaine et les images doivent être accessibles publiquement en HTTPS, sans connexion ni blocage des robots. Une adresse locale ou privée (`localhost`, `192.168.*`, `172.16.*` à `172.31.*`) n’est pas utilisable par leurs serveurs. Après changement du domaine, reconstruire le site ; après changement d’une affiche ou d’une description, demander une nouvelle exploration dans l’outil de diagnostic du réseau concerné si l’ancienne carte persiste. L’affichage et le recadrage finaux dépendent de chaque plateforme et de son cache.
 
 Après `npm run build`, le test `node scripts/test-social-ssr.mjs` vérifie les métadonnées du serveur de production avec des événements simulés, sans accès à votre base.
+
+Diagnostic public en lecture seule, après déploiement :
+
+```bash
+node scripts/check-social-preview.mjs https://hemlemag.com
+node scripts/check-social-preview.mjs https://hemlemag.com/evenements/votre-slug
+```
+
+Ce contrôle simule les identifiants WhatsApp, Facebook, Twitter/X et LinkedIn, vérifie le HTML initial, les images, leur type MIME et les réponses HTTP. Il ne reproduit pas les adresses IP réelles de ces plateformes ni leur cache.
+
+Si les contrôles réussissent mais l’aperçu reste absent : demander une nouvelle exploration dans le [Sharing Debugger de Meta](https://developers.facebook.com/tools/debug/) ou le [Post Inspector de LinkedIn](https://www.linkedin.com/post-inspector/), vérifier dans WhatsApp que « Désactiver les aperçus de liens » n’est pas activé, puis examiner les événements de sécurité Cloudflare pour les robots vérifiés. Ne pas désactiver globalement les protections du site. La variable `VITE_SITE_URL` doit être disponible **à la compilation** ; une modification uniquement dans l’environnement d’exécution ne remplace pas la valeur intégrée aux fichiers déjà construits.
 
 Vérifier `/robots.txt` et `/sitemap.xml` sur le domaine HTTPS, puis soumettre le sitemap dans Google Search Console et Bing Webmaster Tools. Contrôler les titres, descriptions, dates, lieux, images et coordonnées réels. Ni l’indexation effective ni le classement ne sont garantis par le code.
 

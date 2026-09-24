@@ -6,9 +6,10 @@ export function socialMeta(options: {
   image?: string | null;
   imageAlt?: string;
   type?: string;
+  imageDetails?: boolean;
 }) {
   const { siteUrl, title, description, path } = options;
-  const fallback = new URL("/social-card.png", siteUrl).href;
+  const fallback = new URL("/social-card.jpg", siteUrl).href;
   let image = fallback;
   try {
     const candidate = new URL(options.image || fallback, siteUrl);
@@ -26,6 +27,20 @@ export function socialMeta(options: {
     { property: "og:locale", content: "fr_FR" },
     { property: "og:image", content: image },
     { property: "og:image:alt", content: alt },
+    ...(options.imageDetails !== false
+      ? [
+          ...(image.startsWith("https:")
+            ? [{ property: "og:image:secure_url", content: image }]
+            : []),
+          ...(image === fallback
+            ? [
+                { property: "og:image:type", content: "image/jpeg" },
+                { property: "og:image:width", content: "1280" },
+                { property: "og:image:height", content: "672" },
+              ]
+            : []),
+        ]
+      : []),
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: title },
     { name: "twitter:description", content: description },

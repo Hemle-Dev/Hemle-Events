@@ -37,6 +37,7 @@ export type Database = {
       };
       events: {
         Row: {
+          audience: "afrique" | "diaspora" | null;
           annuel: boolean;
           description_format: "plain" | "formatted";
           category_id: string | null;
@@ -70,6 +71,7 @@ export type Database = {
         };
         Insert: {
           annuel?: boolean;
+          audience?: "afrique" | "diaspora" | null;
           description_format?: "plain" | "formatted";
           category_id?: string | null;
           created_at?: string;
@@ -102,6 +104,7 @@ export type Database = {
         };
         Update: {
           annuel?: boolean;
+          audience?: "afrique" | "diaspora" | null;
           description_format?: "plain" | "formatted";
           category_id?: string | null;
           created_at?: string;

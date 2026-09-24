@@ -60,6 +60,22 @@ DO $$ BEGIN
  UPDATE public.events SET mise_en_avant=true WHERE slug='test-annual';
 END $$;
 
+CREATE TEMP TABLE events_before_audience AS SELECT id, to_jsonb(e) AS value FROM public.events e;
+\ir ../drizzle/migrations/20260924121227_editorial_event_audience.sql
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM events_before_audience old LEFT JOIN public.events e USING(id)
+   WHERE e.id IS NULL OR e.audience IS NOT NULL OR (to_jsonb(e) - 'audience') IS DISTINCT FROM old.value) THEN
+   RAISE EXCEPTION 'Editorial migration modified legacy events';
+ END IF;
+ BEGIN
+   UPDATE public.events SET audience='europe' WHERE slug='test-annual';
+   RAISE EXCEPTION 'Invalid editorial audience accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ UPDATE public.events SET audience='diaspora' WHERE slug='test-annual';
+ IF NOT EXISTS (SELECT 1 FROM public.event_occurrences WHERE slug='test-annual' AND audience='diaspora' AND pays='CM') THEN
+   RAISE EXCEPTION 'Editorial choice incorrectly constrained by geography';
+ END IF;
+END $$;
 SET ROLE anon;
 DO $$ BEGIN
  IF EXISTS (SELECT 1 FROM public.events WHERE slug='test-secret') THEN
@@ -67,6 +83,9 @@ DO $$ BEGIN
  END IF;
  IF EXISTS (SELECT 1 FROM public.event_occurrences WHERE slug='test-secret') THEN
    RAISE EXCEPTION 'View leaked draft';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.event_occurrences WHERE audience='diaspora' AND slug='test-annual') THEN
+   RAISE EXCEPTION 'Anonymous editorial filter hides published event';
  END IF;
  IF NOT EXISTS (SELECT 1 FROM public.event_occurrences WHERE slug='test-annual') THEN
    RAISE EXCEPTION 'View hides published annual';

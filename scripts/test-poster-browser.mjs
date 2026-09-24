@@ -107,6 +107,104 @@ try {
     await command("Emulation.setEmulatedMedia", {
       features: [{ name: "prefers-reduced-motion", value: "reduce" }],
     });
+    if (process.env.TEST_CAROUSEL === "1") {
+      await command("Page.navigate", { url: `${base}/tests/browser/carousel.html` });
+      const perPage = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
+      const totalPages = 12 / perPage;
+      await waitFor(
+        `document.querySelector('[role=status]')?.textContent === '1 / ${totalPages}' && !!window.carouselQueries`,
+      );
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true);
+      const queries = await evaluate("window.carouselQueries");
+      assert.equal(queries.all.length, 12);
+      assert.ok(queries.diaspora.every((event) => event.audience === "diaspora"));
+      assert.ok(queries.africa.every((event) => event.audience === "afrique"));
+      assert.ok(
+        queries.requests.some((query) => {
+          const p = new URLSearchParams(query);
+          return p.get("limit") === "12" && p.get("order") === "occurrence_start.asc,id.asc";
+        }),
+      );
+      const visible = () =>
+        evaluate(
+          "[...document.querySelectorAll('article')].filter(e=>{const r=e.getBoundingClientRect(),t=e.closest('[tabindex]').getBoundingClientRect();return r.left>=t.left-2 && r.right<=t.right+2}).map(e=>e.querySelector('h3').textContent)",
+        );
+      assert.equal((await visible()).length, perPage);
+      const initialScreenshot = await command("Page.captureScreenshot", { format: "png" });
+      await writeFile(
+        join(profile, `carousel-${width}.png`),
+        Buffer.from(initialScreenshot.data, "base64"),
+      );
+      assert.deepEqual(
+        await evaluate(
+          "new Promise((resolve, reject) => { const image=new Image(); image.onload=()=>resolve([image.naturalWidth,image.naturalHeight]); image.onerror=()=>reject(new Error('Social image invalid')); image.src='/social-card.jpg'; })",
+        ),
+        [1280, 672],
+      );
+      await evaluate(
+        "document.querySelector('button[aria-label$=suivants]').scrollIntoView({block:'center'})",
+      );
+      await click("button[aria-label$=suivants]");
+      await waitFor(`document.querySelector('[role=status]').textContent === '2 / ${totalPages}'`);
+      assert.equal((await visible())[0], `Événement ${perPage + 1}`);
+      await evaluate("document.querySelector('[tabindex=\"0\"]').focus()");
+      await command("Input.dispatchKeyEvent", { type: "keyDown", key: "End", code: "End" });
+      await command("Input.dispatchKeyEvent", { type: "keyUp", key: "End", code: "End" });
+      await waitFor(
+        `document.querySelector('[role=status]').textContent === '${totalPages} / ${totalPages}'`,
+      );
+      assert.equal(
+        await evaluate("document.querySelector('button[aria-label$=suivants]').disabled"),
+        true,
+      );
+      assert.equal((await visible()).at(-1), "Événement 12");
+      await command("Input.dispatchKeyEvent", { type: "keyDown", key: "Home", code: "Home" });
+      await command("Input.dispatchKeyEvent", { type: "keyUp", key: "Home", code: "Home" });
+      await waitFor(`document.querySelector('[role=status]').textContent === '1 / ${totalPages}'`);
+      if (width === 375) {
+        await command("Emulation.setTouchEmulationEnabled", { enabled: true });
+        const point = await evaluate(
+          "(() => {const r=document.querySelector('[tabindex=\"0\"]').getBoundingClientRect();return {x:r.right-30,y:Math.max(30,r.top+80)}})()",
+        );
+        await command("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+        for (let i = 1; i <= 8; i++) {
+          await command("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ ...point, x: point.x - i * 30 }],
+          });
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+        await command("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await waitFor(
+          `document.querySelector('[role=status]').textContent !== '1 / ${totalPages}'`,
+        );
+        await command("Emulation.setTouchEmulationEnabled", { enabled: false });
+      }
+      for (const count of [1, 3, 4, 10]) {
+        await command("Page.navigate", {
+          url: `${base}/tests/browser/carousel.html?count=${count}`,
+        });
+        await waitFor(`document.querySelectorAll('article').length === ${count}`);
+        const expectedPages = Math.ceil(count / perPage);
+        if (expectedPages === 1) await waitFor("!document.querySelector('[role=status]')");
+        else {
+          await waitFor(
+            `document.querySelector('[role=status]').textContent === '1 / ${expectedPages}'`,
+          );
+          await evaluate("document.querySelector('[tabindex=\"0\"]').focus()");
+          await command("Input.dispatchKeyEvent", { type: "keyDown", key: "End", code: "End" });
+          await command("Input.dispatchKeyEvent", { type: "keyUp", key: "End", code: "End" });
+          await waitFor(
+            `document.querySelector('[role=status]').textContent === '${expectedPages} / ${expectedPages}'`,
+          );
+          assert.equal((await visible()).at(-1), `Événement ${count}`);
+        }
+      }
+      console.log(
+        `PASS carousel ${width}×${height}: pages, order, editorial filters, keyboard, partial pages`,
+      );
+      continue;
+    }
     if (process.env.TEST_EDITOR === "1") {
       await command("Page.navigate", { url: `${base}/tests/browser/editor.html` });
       await waitFor("document.querySelectorAll('button[aria-label^=Choisir]').length === 4");

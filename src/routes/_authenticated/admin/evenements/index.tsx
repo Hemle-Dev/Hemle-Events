@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Star } from "lucide-react";
 import { canFeatureEvent } from "@/lib/event-dates";
+import { EVENT_AUDIENCES, type EventAudience } from "@/lib/event-audience";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   fetchMyAccess,
   setEventStatus,
   setEventFeatured,
+  setEventAudience,
 } from "@/lib/admin";
 import { EVENT_STATUS_LABELS, formatEventDates, type EventStatus } from "@/lib/events";
 
@@ -39,11 +41,12 @@ const STATUS_OPTIONS: (EventStatus | "tous")[] = [
 function AdminEvents() {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
+  const [audience, setAudience] = useState<EventAudience | "a-classer" | "tous">("tous");
   const [statut, setStatut] = useState<EventStatus | "tous">("tous");
 
   const events = useQuery({
-    queryKey: ["admin", "events", q, statut],
-    queryFn: () => fetchAdminEvents({ q, statut }),
+    queryKey: ["admin", "events", q, statut, audience],
+    queryFn: () => fetchAdminEvents({ q, statut, audience }),
   });
   const access = useQuery({ queryKey: ["admin", "my-access"], queryFn: fetchMyAccess });
   const isAdmin = access.data?.roles.includes("administrateur") ?? false;
@@ -72,6 +75,16 @@ function AdminEvents() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const audienceMutation = useMutation({
+    mutationFn: ({ id, value }: { id: string; value: EventAudience }) =>
+      setEventAudience(id, value),
+    onSuccess: () => {
+      toast.success("Classement éditorial enregistré");
+      void invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteEvent(id),
     onSuccess: () => {
@@ -95,6 +108,20 @@ function AdminEvents() {
       </div>
 
       <div className="flex flex-wrap gap-3">
+        <Select value={audience} onValueChange={(value) => setAudience(value as typeof audience)}>
+          <SelectTrigger className="w-48" aria-label="Filtrer par classement éditorial">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tous">Tous les classements</SelectItem>
+            <SelectItem value="a-classer">À classer</SelectItem>
+            {EVENT_AUDIENCES.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input
           className="max-w-xs"
           placeholder="Rechercher un titre, une ville…"
@@ -138,6 +165,24 @@ function AdminEvents() {
                 {EVENT_STATUS_LABELS[event.statut]}
               </span>
               <div className="ml-auto flex flex-wrap gap-2">
+                <Select
+                  value={event.audience ?? ""}
+                  disabled={audienceMutation.isPending}
+                  onValueChange={(value) =>
+                    audienceMutation.mutate({ id: event.id, value: value as EventAudience })
+                  }
+                >
+                  <SelectTrigger className="w-36" aria-label={`Classer ${event.titre}`}>
+                    <SelectValue placeholder="À classer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVENT_AUDIENCES.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {event.mise_en_avant || canFeatureEvent(event) ? (
                   <Button
                     size="sm"

@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole, EventStatus, EventWithCategory } from "@/lib/events";
 import { eventToday } from "@/lib/event-dates";
+import type { EventAudience } from "@/lib/event-audience";
 
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
@@ -35,7 +36,11 @@ export async function fetchMyAccess() {
 }
 
 export async function fetchAdminEvents(
-  filters: { q?: string; statut?: EventStatus | "tous" } = {},
+  filters: {
+    q?: string;
+    statut?: EventStatus | "tous";
+    audience?: EventAudience | "a-classer" | "tous";
+  } = {},
 ) {
   let query = supabase
     .from("events")
@@ -44,6 +49,9 @@ export async function fetchAdminEvents(
     .limit(200);
 
   if (filters.statut && filters.statut !== "tous") query = query.eq("statut", filters.statut);
+  if (filters.audience === "a-classer") query = query.is("audience", null);
+  else if (filters.audience && filters.audience !== "tous")
+    query = query.eq("audience", filters.audience);
   if (filters.q?.trim()) {
     const term = filters.q.trim().replace(/[%,()]/g, " ");
     query = query.or(`titre.ilike.%${term}%,ville.ilike.%${term}%,organisateur.ilike.%${term}%`);
@@ -101,6 +109,16 @@ export async function setEventFeatured(id: string, featured: boolean) {
   const { error } = await supabase
     .from("events")
     .update({ mise_en_avant: featured })
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+}
+
+export async function setEventAudience(id: string, audience: EventAudience) {
+  const { error } = await supabase
+    .from("events")
+    .update({ audience })
     .eq("id", id)
     .select("id")
     .single();
